@@ -472,25 +472,19 @@ task.spawn(function()
 end)
 
 
-
--- 🌱 Auto Plant Seed Section trong tab Play
--- 🌱 Giao diện Auto Plant Seed trong tab Play với lưu cấu hình
--- Yêu cầu: Fluent UI đã được khởi tạo với biến Window và PlayTab đã có
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
--- Kiểm tra PlayTab đã có chưa
 assert(PlayTab, "[AutoPlant] PlayTab chưa được tạo!")
 
--- Thêm Section trong tab Play
 local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
 
 -- Lấy config hiện tại, hoặc khởi tạo mặc định
 local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
 local autoPlantEnabled = ConfigSystem.CurrentConfig.AutoPlantEnabled or false
 
--- Hàm lấy danh sách seed có trong Backpack
+-- Hàm lấy danh sách seed trong Backpack
 local function getBackpackSeedList()
     local seedList = {}
     local backpack = player:FindFirstChild("Backpack")
@@ -504,7 +498,7 @@ local function getBackpackSeedList()
     return seedList
 end
 
--- Khởi tạo dropdown với seed hiện có trong backpack
+-- Tạo dropdown ban đầu
 local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
     Title = "Chọn các loại Seed để Auto Plant",
     Values = getBackpackSeedList(),
@@ -512,95 +506,52 @@ local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
     Default = selectedSeedsToPlant
 })
 
--- Hàm cập nhật dropdown mỗi khi backpack thay đổi
-local function refreshSeedDropdown()
-    if seedDropdown then
-        local newSeedList = getBackpackSeedList()
-        seedDropdown:SetValues(newSeedList)
-
-        -- Xoá seed đã chọn trước đó nếu không còn trong backpack
-        for i = #selectedSeedsToPlant, 1, -1 do
-            if not table.find(newSeedList, selectedSeedsToPlant[i]) then
-                table.remove(selectedSeedsToPlant, i)
-            end
-        end
-        seedDropdown:SetValue(selectedSeedsToPlant)
-        ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
-        ConfigSystem.SaveConfig()
-    end
-end
-
--- Gắn sự kiện khi giá trị dropdown thay đổi
+-- Gắn sự kiện chọn seed
 if seedDropdown then
     seedDropdown:OnChanged(function(values)
         selectedSeedsToPlant = values
         ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
-        print("🌱1 Đã chọn các loại seed:")
-        for _, v in ipairs(selectedSeedsToPlant) do
-            print("✅", v)
-        end
         ConfigSystem.SaveConfig()
+
+        if #values == 0 then
+            print("⚠️ Bạn chưa chọn loại seed nào.")
+        else
+            print("🌱 Các loại seed đã chọn:")
+            for _, v in ipairs(values) do
+                print("✅", v)
+            end
+        end
     end)
 else
     warn("[AutoPlant] Lỗi tạo seedDropdown")
 end
 
--- Theo dõi backpack thay đổi và cập nhật dropdown
+-- Hàm cập nhật dropdown khi Backpack thay đổi
+local function refreshSeedDropdown()
+    if seedDropdown then
+        local newSeedList = getBackpackSeedList()
+
+        -- Giữ lại những seed đã chọn còn hợp lệ
+        local validSelected = {}
+        for _, selected in ipairs(selectedSeedsToPlant) do
+            if table.find(newSeedList, selected) then
+                table.insert(validSelected, selected)
+            end
+        end
+
+        seedDropdown:SetValues(newSeedList)
+        seedDropdown:SetValue(validSelected)
+
+        selectedSeedsToPlant = validSelected
+        ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
+        ConfigSystem.SaveConfig()
+    end
+end
+
+-- Theo dõi thay đổi Backpack
 player.Backpack.ChildAdded:Connect(refreshSeedDropdown)
 player.Backpack.ChildRemoved:Connect(refreshSeedDropdown)
 
--- Toggle bật/tắt auto plant
-local toggleObj = PlantSection:AddToggle("AutoPlantToggle", {
-    Title = "Auto Plant Selected Seeds",
-    Default = autoPlantEnabled
-})
-
-if toggleObj then
-    toggleObj:OnChanged(function(state)
-        autoPlantEnabled = state
-        ConfigSystem.CurrentConfig.AutoPlantEnabled = state
-        ConfigSystem.SaveConfig()
-        print(state and "✅ Auto Plant BẬT" or "⛔ Auto Plant TẮT")
-    end)
-
-    toggleObj:SetValue(autoPlantEnabled)
-else
-    warn("[AutoPlant] Lỗi tạo toggleObj")
-end
-
--- Hàm tạo vị trí random để trồng cây gần người chơi
-local function getRandomPlantPosition()
-    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        local base = hrp.Position
-        return base + Vector3.new(math.random(-5,5), 0, math.random(-5,5))
-    end
-    return Vector3.new(0,0,0)
-end
-
--- Vòng lặp auto plant
-task.spawn(function()
-    while true do
-        if autoPlantEnabled and #selectedSeedsToPlant > 0 then
-            local backpack = player:FindFirstChild("Backpack")
-            local char = player.Character
-            if backpack and char then
-                for _, seedName in ipairs(selectedSeedsToPlant) do
-                    local tool = backpack:FindFirstChild(seedName)
-                    if tool and tool:GetAttribute("ITEM_TYPE") == "Seed" then
-                        tool.Parent = char
-                        repeat
-                            local pos = getRandomPlantPosition()
-                            ReplicatedStorage.GameEvents.Plant_RE:FireServer(pos, seedName)
-                            task.wait(1)
-                        until tool.Parent ~= char or not autoPlantEnabled
-                    end
-                end
-            end
-        end
-        task.wait(0.5)
-    end
-end)
 
 --  -- TAB EVENT 
 
