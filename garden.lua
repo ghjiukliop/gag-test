@@ -475,7 +475,7 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 assert(PlayTab, "[AutoPlant] PlayTab chưa được tạo!")
-local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
+local PlantSection = PlayTab:AddSection("🌱2 Auto Plant Seed")
 
 local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
 local autoPlantEnabled = ConfigSystem.CurrentConfig.AutoPlantEnabled or false
