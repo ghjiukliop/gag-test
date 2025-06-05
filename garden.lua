@@ -493,70 +493,8 @@ local allSeeds = {
     "Sunflower", "Super", "Tomato", "Venus Fly Trap", "Watermelon"
 }
 
--- 🧠 Hệ thống lưu cấu hình
-local ConfigSystem = {}
-ConfigSystem.FileName = "GAGConfig_" .. player.Name .. ".json"
-ConfigSystem.DefaultConfig = {
-    SelectedSeeds = {},
-    AutoPlantEnabled = false
-}
-ConfigSystem.CurrentConfig = {}
-ConfigSystem.LastSaveTime = 0
-ConfigSystem.SaveCooldown = 2
-ConfigSystem.PendingSave = false
 
-function ConfigSystem.SaveConfig()
-    local currentTime = os.time()
-    if currentTime - ConfigSystem.LastSaveTime < ConfigSystem.SaveCooldown then
-        ConfigSystem.PendingSave = true
-        return
-    end
 
-    local success, err = pcall(function()
-        local HttpService = game:GetService("HttpService")
-        writefile(ConfigSystem.FileName, HttpService:JSONEncode(ConfigSystem.CurrentConfig))
-    end)
-
-    if success then
-        ConfigSystem.LastSaveTime = currentTime
-        ConfigSystem.PendingSave = false
-    else
-        warn("Lưu cấu hình thất bại:", err)
-    end
-end
-
-function ConfigSystem.LoadConfig()
-    local success, content = pcall(function()
-        if isfile(ConfigSystem.FileName) then
-            return readfile(ConfigSystem.FileName)
-        end
-        return nil
-    end)
-
-    if success and content then
-        local success2, data = pcall(function()
-            local HttpService = game:GetService("HttpService")
-            return HttpService:JSONDecode(content)
-        end)
-
-        if success2 and data then
-            for k,v in pairs(ConfigSystem.DefaultConfig) do
-                if data[k] == nil then data[k] = v end
-            end
-            ConfigSystem.CurrentConfig = data
-        end
-    else
-        ConfigSystem.CurrentConfig = ConfigSystem.DefaultConfig
-    end
-end
-
-ConfigSystem.LoadConfig()
-
--- 🌿 Khởi tạo UI trong tab Play
-local PlayTab = Window:AddTab({
-    Title = "Play",
-    Icon = "rbxassetid://7734053495"
-})
 
 local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
 local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
