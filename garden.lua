@@ -471,96 +471,87 @@ task.spawn(function()
     end
 end)
 -- planting
-
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
 assert(PlayTab, "[AutoPlant] PlayTab chưa được tạo!")
+local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
 
-local PlantSection = PlayTab:AddSection("🌱3 Auto Plant Seed")
-
--- Danh sách toàn bộ seed cố định
-local AllSeedNames = {
-    "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop", "Blueberry", "Cacao", "Cactus",
-    "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry", "Cherry Blossom", "Chocolate Carrot", "Coconut", "Corn",
-    "Cranberry", "Crimson Vine", "Crocus", "Cursed Fruit", "Daffodil", "Dandelion", "Dragon Fruit", "Durian", "Easter Egg",
-    "Eggplant", "Ember Lily", "Foxglove", "Glowshroom", "Grape", "Hive Fruit", "Lemon", "Lilac", "Lotus", "Mango", "Mega Mushroom",
-    "Mint", "Moon Blossom", "Moon Mango", "Moon Melon", "Moonflower", "Moonglow", "Mushroom", "Nectarine", "Nightshade",
-    "Orange Tulip", "Papaya", "Passionfruit", "Peach", "Pear", "Pepper", "Pineapple", "Pink Lily", "Pink Tulip", "Pumpkin",
-    "Purple Cabbage", "Purple Dahlia", "Raspberry", "Red Lollipop", "Rose", "Soul Fruit", "Starfruit", "Strawberry", "Succulent",
-    "Sunflower", "Super", "Tomato", "Venus Fly Trap", "Watermelon"
-}
-
--- Lấy config hiện tại hoặc khởi tạo mặc định
+-- Lấy config hiện tại, hoặc khởi tạo mặc định
 local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
 local autoPlantEnabled = ConfigSystem.CurrentConfig.AutoPlantEnabled or false
 
--- Helper chuyển dict <=> array
-local function arrayToDict(arr)
-    local dict = {}
-    for _, name in ipairs(arr) do
-        dict[name] = true
-    end
-    return dict
-end
-
-local function dictToArray(dict)
-    local arr = {}
-    for name, chosen in pairs(dict) do
-        if chosen then
-            table.insert(arr, name)
-        end
-    end
-    return arr
-end
-
--- Kiểm tra seed có trong Backpack không
-local function isSeedInBackpack(seedName)
+-- Hàm lấy danh sách các giá trị attribute "Seed" trong Backpack
+local function getSeedValuesFromBackpack()
+    local seeds = {}
     local backpack = player:FindFirstChild("Backpack")
     if backpack then
-        for _, item in ipairs(backpack:GetChildren()) do
-            if item:IsA("Tool") and item.Name == seedName and item:GetAttribute("ITEM_TYPE") == "Seed" then
-                return true
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") then
+                local seedValue = tool:GetAttribute("Seed")
+                if seedValue and not table.find(seeds, seedValue) then
+                    table.insert(seeds, seedValue)
+                end
             end
         end
     end
-    return false
+    return seeds
 end
 
--- Tạo dropdown với toàn bộ seed
+-- Tạo dropdown (giá trị tạm trống sẽ cập nhật sau)
 local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
     Title = "Chọn các loại Seed để Auto Plant",
-    Values = AllSeedNames,
+    Values = {},
     Multi = true,
-    Default = arrayToDict(selectedSeedsToPlant)
+    Default = selectedSeedsToPlant
 })
 
--- Khi chọn seed, kiểm tra seed đó có trong kho không và log ra
+-- Cập nhật dropdown với danh sách seed mới
+local function refreshSeedDropdown()
+    if seedDropdown then
+        local seedList = getSeedValuesFromBackpack()
+
+        -- Giữ lại những seed đã chọn còn tồn tại trong backpack
+        local validSelected = {}
+        for _, selected in ipairs(selectedSeedsToPlant) do
+            if table.find(seedList, selected) then
+                table.insert(validSelected, selected)
+            end
+        end
+
+        seedDropdown:SetValues(seedList)
+        seedDropdown:SetValue(validSelected)
+
+        selectedSeedsToPlant = validSelected
+        ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
+        ConfigSystem.SaveConfig()
+    end
+end
+
+-- Gắn sự kiện khi thay đổi lựa chọn trong dropdown
 if seedDropdown then
-    seedDropdown:OnChanged(function(values) -- values là dict
-        if values and next(values) then
-            local pickedSeeds = dictToArray(values)
-            selectedSeedsToPlant = pickedSeeds
+    seedDropdown:OnChanged(function(values)
+        if values and #values > 0 then
+            selectedSeedsToPlant = values
             ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
             ConfigSystem.SaveConfig()
-
             print("🌱 Các loại seed đã chọn:")
-            for _, seedName in ipairs(pickedSeeds) do
-                local inBackpack = isSeedInBackpack(seedName)
-                print(string.format("✅ %s - %s", seedName, inBackpack and "Có trong kho" or "Không có trong kho"))
+            for _, v in ipairs(values) do
+                print("✅", v)
             end
         else
-            selectedSeedsToPlant = {}
             print("⚠️ Bạn chưa chọn loại seed nào.")
         end
     end)
 
-    -- Gán giá trị khởi tạo cho dropdown
-    seedDropdown:SetValue(arrayToDict(selectedSeedsToPlant))
+    refreshSeedDropdown()
 else
     warn("[AutoPlant] Lỗi tạo seedDropdown")
 end
+
+-- Theo dõi thay đổi trong Backpack để cập nhật dropdown
+player.Backpack.ChildAdded:Connect(refreshSeedDropdown)
+player.Backpack.ChildRemoved:Connect(refreshSeedDropdown)
 
 --  -- TAB EVENT 
 
