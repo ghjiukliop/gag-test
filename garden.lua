@@ -471,7 +471,7 @@ task.spawn(function()
     end
 end)
 -- planting
-local PlantSection = PlayTab:AddSection("🌱2 Auto Plant Seed")
+local PlantSection = PlayTab:AddSection("🌱1uto Plant Seed")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
