@@ -471,172 +471,171 @@ task.spawn(function()
     end
 end)
 -- planting
-----------------------------------------------------------------
--- 1) SECTION trong PlayTab
-----------------------------------------------------------------
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local RunService = game:GetService("RunService")
+
+assert(PlayTab, "[AutoPlant] PlayTab chưa được tạo!")
 local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
 
-----------------------------------------------------------------
--- 2) Danh sách SEED cố định
-----------------------------------------------------------------
-local AllSeedNames = {
-    "Apple","Avocado","Bamboo","Banana","Beanstalk","Blood Banana","Blue Lollipop","Blueberry","Cacao","Cactus",
-    "Candy Blossom","Candy Sunflower","Carrot","Celestiberry","Cherry Blossom","Chocolate Carrot","Coconut","Corn",
-    "Cranberry","Crimson Vine","Crocus","Cursed Fruit","Daffodil","Dandelion","Dragon Fruit","Durian","Easter Egg",
-    "Eggplant","Ember Lily","Foxglove","Glowshroom","Grape","Hive Fruit","Lemon","Lilac","Lotus","Mango",
-    "Mega Mushroom","Mint","Moon Blossom","Moon Mango","Moon Melon","Moonflower","Moonglow","Mushroom","Nectarine",
-    "Nightshade","Orange Tulip","Papaya","Passionfruit","Peach","Pear","Pepper","Pineapple","Pink Lily","Pink Tulip",
-    "Pumpkin","Purple Cabbage","Purple Dahlia","Raspberry","Red Lollipop","Rose","Soul Fruit","Starfruit",
-    "Strawberry","Succulent","Sunflower","Super","Tomato","Venus Fly Trap","Watermelon"
-}
+----------------------------------------------------
+-- Helpers: dict ⇆ array
+----------------------------------------------------
+local function arrayToDict(arr)
+    local dict = {}
+    for _, v in ipairs(arr) do
+        dict[v] = true
+    end
+    return dict
+end
 
-----------------------------------------------------------------
--- 3) Helpers: dict ⇆ array  (Fluent Multi-select trả về dict)
-----------------------------------------------------------------
 local function dictToArray(dict)
     local arr = {}
     for name, picked in pairs(dict) do
-        if picked then table.insert(arr, name) end
+        if picked then
+            table.insert(arr, name)
+        end
     end
     return arr
 end
 
-----------------------------------------------------------------
--- 4) Hàm kiểm tra seed trong Backpack
-----------------------------------------------------------------
-local function seedExistsInBackpack(seedName)
-    local backpack = player:FindFirstChild("Backpack")
-    if not backpack then return false end
-    for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and tool:GetAttribute("Seed") == seedName then
-            return true
-        end
-    end
-    return false
-end
+----------------------------------------------------
+-- Constants
+----------------------------------------------------
+local ALL_SEEDS = {
+    "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop",
+    "Blueberry", "Cacao", "Cactus", "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry",
+    "Cherry Blossom", "Chocolate Carrot", "Coconut", "Corn", "Cranberry", "Crimson Vine", "Crocus",
+    "Cursed Fruit", "Daffodil", "Dandelion", "Dragon Fruit", "Durian", "Easter Egg", "Eggplant",
+    "Ember Lily", "Foxglove", "Glowshroom", "Grape", "Hive Fruit", "Lemon", "Lilac", "Lotus", "Mango",
+    "Mega Mushroom", "Mint", "Moon Blossom", "Moon Mango", "Moon Melon", "Moonflower", "Moonglow",
+    "Mushroom", "Nectarine", "Nightshade", "Orange Tulip", "Papaya", "Passionfruit", "Peach", "Pear",
+    "Pepper", "Pineapple", "Pink Lily", "Pink Tulip", "Pumpkin", "Purple Cabbage", "Purple Dahlia",
+    "Raspberry", "Red Lollipop", "Rose", "Soul Fruit", "Starfruit", "Strawberry", "Succulent",
+    "Sunflower", "Super", "Tomato", "Venus Fly Trap", "Watermelon"
+}
 
-----------------------------------------------------------------
--- 5) Tạo DROPDOWN
-----------------------------------------------------------------
-local seedDropdown = PlantSection:AddDropdown("SelectSeedsToCheck", {
-    Title   = "Chọn các Seed cần kiểm tra",
-    Values  = AllSeedNames, -- luôn đủ 75 seed
-    Multi   = true,
-    Default = {}            -- không tick sẵn
+----------------------------------------------------
+-- Config
+----------------------------------------------------
+local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
+local autoPlantingEnabled = ConfigSystem.CurrentConfig.AutoPlantEnabled or false
+
+----------------------------------------------------
+-- Dropdown chọn seed
+----------------------------------------------------
+local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
+    Title = "Chọn các loại Seed để Auto Plant",
+    Values = ALL_SEEDS,
+    Multi = true,
+    Default = arrayToDict(selectedSeedsToPlant)
 })
 
-----------------------------------------------------------------
--- 6) Sự kiện khi NGƯỜI DÙNG thay đổi lựa chọn
-----------------------------------------------------------------
-seedDropdown:OnChanged(function(dictValues)           -- dictValues = {["Bamboo"]=true, ...}
-    if not dictValues or not next(dictValues) then
-        print("⚠️ Bạn chưa chọn seed nào.")
-        return
-    end
+seedDropdown:OnChanged(function(dictValues)
+    selectedSeedsToPlant = dictToArray(dictValues)
 
-    local pickedSeeds = dictToArray(dictValues)
-
-    print("🔎 Kết quả kiểm tra Backpack:")
-    for _, seedName in ipairs(pickedSeeds) do
-        if seedExistsInBackpack(seedName) then
-            print("🟢 Có:", seedName)
-        else
-            print("🔴 Không có:", seedName)
+    if #selectedSeedsToPlant > 0 then
+        print("🌱 Các seed đã chọn:")
+        for _, seedName in ipairs(selectedSeedsToPlant) do
+            local found = false
+            local backpack = player:FindFirstChild("Backpack")
+            if backpack then
+                for _, tool in ipairs(backpack:GetChildren()) do
+                    if tool:IsA("Tool") and tool:GetAttribute("Seed") == seedName then
+                        print("✅", seedName, "(có trong Backpack)")
+                        found = true
+                        break
+                    end
+                end
+            end
+            if not found then
+                print("❌", seedName, "(KHÔNG tìm thấy trong Backpack)")
+            end
         end
-    end
-end)
-----------------------------------------------------
--- 🌱 Auto Planting Toggle
-----------------------------------------------------
-local autoPlantingEnabled = false
-
-PlantSection:AddToggle("ToggleAutoPlanting", {
-    Title = "🌿 Bật/Tắt Auto Planting",
-    Default = false
-}):OnChanged(function(enabled)
-    autoPlantingEnabled = enabled
-    if enabled then
-        print("✅ Đã bật Auto Planting.")
     else
-        print("⛔ Đã tắt Auto Planting.")
+        print("⚠️ Bạn chưa chọn loại seed nào.")
     end
+
+    ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
+    ConfigSystem.SaveConfig()
 end)
 
 ----------------------------------------------------
--- Hàm tự động plant seed theo khu vực CanPlant
+-- Toggle Auto Plant
 ----------------------------------------------------
-local function getNextPlantPosition()
-    local canPlantZone = workspace:FindFirstChild("CanPlant")
-    if not canPlantZone then
-        warn("⚠️ Không tìm thấy khu vực CanPlant")
-        return {}
-    end
+local toggle = PlantSection:AddToggle("ToggleAutoPlanting", {
+    Title = "Bật Auto Planting",
+    Default = autoPlantingEnabled
+})
 
-    local positions = {}
-    for _, v in ipairs(canPlantZone:GetDescendants()) do
-        if v:IsA("BasePart") and v.Transparency < 1 and v.CanCollide then
-            table.insert(positions, v.Position)
-        end
-    end
-    return positions
-end
-
-local function findToolWithSeed(seedName)
-    local backpack = player:FindFirstChild("Backpack")
-    if backpack then
-        for _, tool in ipairs(backpack:GetChildren()) do
-            if tool:IsA("Tool") and tool:GetAttribute("Seed") == seedName then
-                return tool
-            end
-        end
-    end
-    return nil
-end
-
-local function plantSeedAtPosition(tool, position)
-    if tool and tool:IsA("Tool") and position then
-        player.Character.HumanoidRootPart.CFrame = CFrame.new(position + Vector3.new(0, 3, 0))
-        task.wait(0.2)
-
-        local prompt = tool:FindFirstChildWhichIsA("ProximityPrompt", true)
-        if prompt then
-            fireproximityprompt(prompt)
-        else
-            local click = tool:FindFirstChildWhichIsA("ClickDetector", true)
-            if click then
-                fireclickdetector(click)
-            end
-        end
-    end
-end
+toggle:OnChanged(function(value)
+    autoPlantingEnabled = value
+    ConfigSystem.CurrentConfig.AutoPlantEnabled = value
+    ConfigSystem.SaveConfig()
+    print(value and "🟢 Auto Planting đã BẬT" or "🔴 Auto Planting đã TẮT")
+end)
 
 ----------------------------------------------------
--- Vòng lặp Auto Plant
+-- Auto Planting Logic
 ----------------------------------------------------
 task.spawn(function()
     while true do
         if autoPlantingEnabled and #selectedSeedsToPlant > 0 then
-            local plantPositions = getNextPlantPosition()
-
-            for _, seedName in ipairs(selectedSeedsToPlant) do
-                local tool = findToolWithSeed(seedName)
-                if tool then
-                    for _, pos in ipairs(plantPositions) do
-                        -- Kiểm tra nếu đã mất tool hoặc bị đổi seed giữa chừng
-                        if not autoPlantingEnabled or tool.Parent ~= player.Backpack then
-                            break
-                        end
-                        plantSeedAtPosition(tool, pos)
-                        task.wait(0.1)
+            local farm = workspace:FindFirstChild("Farm")
+            if farm then
+                local ownerFarm = nil
+                for _, f in ipairs(farm:GetChildren()) do
+                    if f:FindFirstChild("Owner") and f.Owner.Value == player then
+                        ownerFarm = f
+                        break
                     end
-                else
-                    warn("❌ Không tìm thấy công cụ tương ứng với seed:", seedName)
+                end
+
+                if ownerFarm and ownerFarm:FindFirstChild("Important") then
+                    local canPlant = ownerFarm.Important:FindFirstChild("CanPlant")
+                    if canPlant then
+                        -- Duyệt từng vị trí trong CanPlant
+                        for _, pos in ipairs(canPlant:GetChildren()) do
+                            if pos:IsA("BasePart") and #selectedSeedsToPlant > 0 then
+                                -- Lấy Tool tương ứng từ Backpack
+                                local backpack = player:FindFirstChild("Backpack")
+                                if backpack then
+                                    for _, tool in ipairs(backpack:GetChildren()) do
+                                        if tool:IsA("Tool") then
+                                            local seedAttr = tool:GetAttribute("Seed")
+                                            if seedAttr and table.find(selectedSeedsToPlant, seedAttr) then
+                                                -- Teleport đến chỗ cần trồng
+                                                player.Character:PivotTo(CFrame.new(pos.Position + Vector3.new(0, 3, 0)))
+                                                task.wait(0.25)
+
+                                                -- Dùng công cụ
+                                                player.Character.Humanoid:EquipTool(tool)
+                                                task.wait(0.15)
+
+                                                -- Bấm chuột hoặc kích hoạt công cụ
+                                                local activate = tool:FindFirstChildOfClass("RemoteEvent")
+                                                if activate then
+                                                    activate:FireServer()
+                                                else
+                                                    tool:Activate()
+                                                end
+
+                                                task.wait(0.3)
+                                                break
+                                            end
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
                 end
             end
         end
-        task.wait(1)
+        task.wait(1.0)
     end
 end)
+
 
 --  -- TAB EVENT 
 
