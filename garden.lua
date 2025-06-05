@@ -530,26 +530,30 @@ local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
     Multi = true,
     Default = arrayToDict(selectedSeedsToPlant)
 })
-
 seedDropdown:OnChanged(function(dictValues)
     selectedSeedsToPlant = dictToArray(dictValues)
 
     if #selectedSeedsToPlant > 0 then
         print("🌱 Các seed đã chọn:")
+        local backpack = player:FindFirstChild("Backpack")
+
         for _, seedName in ipairs(selectedSeedsToPlant) do
-            local found = false
-            local backpack = player:FindFirstChild("Backpack")
+            local foundTool, qty = nil, "Không rõ"
+
             if backpack then
                 for _, tool in ipairs(backpack:GetChildren()) do
                     if tool:IsA("Tool") and tool:GetAttribute("Seed") == seedName then
-                        print("✅", seedName, "(có trong Backpack)")
-                        found = true
+                        foundTool = tool
+                        qty = tool:GetAttribute("Quantity") or "Không rõ"
                         break
                     end
                 end
             end
-            if not found then
-                print("❌", seedName, "(KHÔNG tìm thấy trong Backpack)")
+
+            if foundTool then
+                print(string.format("✅ %s | Quantity: %s", seedName, qty))
+            else
+                print(string.format("❌ %s | Không tìm thấy tool trong Backpack", seedName))
             end
         end
     else
@@ -559,6 +563,7 @@ seedDropdown:OnChanged(function(dictValues)
     ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
     ConfigSystem.SaveConfig()
 end)
+
 
 ----------------------------------------------------
 -- Toggle Auto Plant
