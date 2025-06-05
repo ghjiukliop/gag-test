@@ -545,6 +545,98 @@ seedDropdown:OnChanged(function(dictValues)           -- dictValues = {["Bamboo"
         end
     end
 end)
+----------------------------------------------------
+-- 🌱 Auto Planting Toggle
+----------------------------------------------------
+local autoPlantingEnabled = false
+
+PlantSection:AddToggle("ToggleAutoPlanting", {
+    Title = "🌿 Bật/Tắt Auto Planting",
+    Default = false
+}):OnChanged(function(enabled)
+    autoPlantingEnabled = enabled
+    if enabled then
+        print("✅ Đã bật Auto Planting.")
+    else
+        print("⛔ Đã tắt Auto Planting.")
+    end
+end)
+
+----------------------------------------------------
+-- Hàm tự động plant seed theo khu vực CanPlant
+----------------------------------------------------
+local function getNextPlantPosition()
+    local canPlantZone = workspace:FindFirstChild("CanPlant")
+    if not canPlantZone then
+        warn("⚠️ Không tìm thấy khu vực CanPlant")
+        return {}
+    end
+
+    local positions = {}
+    for _, v in ipairs(canPlantZone:GetDescendants()) do
+        if v:IsA("BasePart") and v.Transparency < 1 and v.CanCollide then
+            table.insert(positions, v.Position)
+        end
+    end
+    return positions
+end
+
+local function findToolWithSeed(seedName)
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, tool in ipairs(backpack:GetChildren()) do
+            if tool:IsA("Tool") and tool:GetAttribute("Seed") == seedName then
+                return tool
+            end
+        end
+    end
+    return nil
+end
+
+local function plantSeedAtPosition(tool, position)
+    if tool and tool:IsA("Tool") and position then
+        player.Character.HumanoidRootPart.CFrame = CFrame.new(position + Vector3.new(0, 3, 0))
+        task.wait(0.2)
+
+        local prompt = tool:FindFirstChildWhichIsA("ProximityPrompt", true)
+        if prompt then
+            fireproximityprompt(prompt)
+        else
+            local click = tool:FindFirstChildWhichIsA("ClickDetector", true)
+            if click then
+                fireclickdetector(click)
+            end
+        end
+    end
+end
+
+----------------------------------------------------
+-- Vòng lặp Auto Plant
+----------------------------------------------------
+task.spawn(function()
+    while true do
+        if autoPlantingEnabled and #selectedSeedsToPlant > 0 then
+            local plantPositions = getNextPlantPosition()
+
+            for _, seedName in ipairs(selectedSeedsToPlant) do
+                local tool = findToolWithSeed(seedName)
+                if tool then
+                    for _, pos in ipairs(plantPositions) do
+                        -- Kiểm tra nếu đã mất tool hoặc bị đổi seed giữa chừng
+                        if not autoPlantingEnabled or tool.Parent ~= player.Backpack then
+                            break
+                        end
+                        plantSeedAtPosition(tool, pos)
+                        task.wait(0.1)
+                    end
+                else
+                    warn("❌ Không tìm thấy công cụ tương ứng với seed:", seedName)
+                end
+            end
+        end
+        task.wait(1)
+    end
+end)
 
 --  -- TAB EVENT 
 
