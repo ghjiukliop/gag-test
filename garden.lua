@@ -506,15 +506,40 @@ local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
     Values = AllSeedNames,
     Multi = true,
     Default = selectedSeedsToPlant
-}):OnChanged(function(values)
-    selectedSeedsToPlant = values
-    ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
-    print("🌱 Đã chọn các loại seed:")
-    for _, v in ipairs(selectedSeedsToPlant) do
-        print("✅", v)
-    end
-    ConfigSystem.SaveConfig()
-end)
+})
+
+if seedDropdown then
+    seedDropdown:OnChanged(function(values)
+        selectedSeedsToPlant = values
+        ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
+        print("🌱 Đã chọn các loại seed:")
+        for _, v in ipairs(selectedSeedsToPlant) do
+            print("✅", v)
+        end
+        ConfigSystem.SaveConfig()
+    end)
+    seedDropdown:SetValue(selectedSeedsToPlant)
+else
+    warn("Lỗi tạo seedDropdown")
+end
+
+local toggleObj = PlantSection:AddToggle("AutoPlantToggle", {
+    Title = "Auto Plant Selected Seeds",
+    Default = autoPlantEnabled
+})
+
+if toggleObj then
+    toggleObj:OnChanged(function(state)
+        autoPlantEnabled = state
+        ConfigSystem.CurrentConfig.AutoPlantEnabled = state
+        ConfigSystem.SaveConfig()
+        print(state and "✅ Auto Plant BẬT" or "⛔ Auto Plant TẮT")
+    end)
+    toggleObj:SetValue(autoPlantEnabled)
+else
+    warn("Lỗi tạo toggleObj")
+end
+
 
 local toggleObj = PlantSection:AddToggle("AutoPlantToggle", {
     Title = "Auto Plant Selected Seeds",
