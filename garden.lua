@@ -470,58 +470,76 @@ task.spawn(function()
         task.wait(0.2)
     end
 end)
--- PLANTINGlocal Players = game:GetService("Players")
+-- PLANTING
+local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- Danh sách seed cố định
-local AllSeeds = {
-    "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop", "Blueberry", "Cacao",
-    "Cactus", "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry", "Cherry Blossom", "Chocolate Carrot",
-    "Coconut", "Corn", "Cranberry", "Crimson Vine", "Crocus", "Cursed Fruit", "Daffodil", "Dandelion", "Dragon Fruit",
-    "Durian", "Easter Egg", "Eggplant", "Ember Lily", "Foxglove", "Glowshroom", "Grape", "Hive Fruit", "Lemon",
-    "Lilac", "Lotus", "Mango", "Mega Mushroom", "Mint", "Moon Blossom", "Moon Mango", "Moon Melon", "Moonflower",
-    "Moonglow", "Mushroom", "Nectarine", "Nightshade", "Orange Tulip", "Papaya", "Passionfruit", "Peach", "Pear",
-    "Pepper", "Pineapple", "Pink Lily", "Pink Tulip", "Pumpkin", "Purple Cabbage", "Purple Dahlia", "Raspberry",
-    "Red Lollipop", "Rose", "Soul Fruit", "Starfruit", "Strawberry", "Succulent", "Sunflower", "Super", "Tomato",
-    "Venus Fly Trap", "Watermelon"
-}
+-- Đảm bảo PlayTab đã có
+assert(PlayTab, "[AutoPlant] PlayTab chưa được tạo!")
 
--- Thêm section vào tab Play
+-- Tạo một section trong PlayTab
 local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
 
--- Dropdown chọn seed từ danh sách cố định
-local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
-    Title = "Chọn các loại Seed",
-    Values = AllSeeds,
-    Multi = true,
-    Default = {}
+-- Danh sách seed cố định
+local AllSeedNames = {
+    "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop", "Blueberry",
+    "Cacao", "Cactus", "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry", "Cherry Blossom",
+    "Chocolate Carrot", "Coconut", "Corn", "Cranberry", "Crimson Vine", "Crocus", "Cursed Fruit", "Daffodil",
+    "Dandelion", "Dragon Fruit", "Durian", "Easter Egg", "Eggplant", "Ember Lily", "Foxglove", "Glowshroom",
+    "Grape", "Hive Fruit", "Lemon", "Lilac", "Lotus", "Mango", "Mega Mushroom", "Mint", "Moon Blossom",
+    "Moon Mango", "Moon Melon", "Moonflower", "Moonglow", "Mushroom", "Nectarine", "Nightshade", "Orange Tulip",
+    "Papaya", "Passionfruit", "Peach", "Pear", "Pepper", "Pineapple", "Pink Lily", "Pink Tulip", "Pumpkin",
+    "Purple Cabbage", "Purple Dahlia", "Raspberry", "Red Lollipop", "Rose", "Soul Fruit", "Starfruit",
+    "Strawberry", "Succulent", "Sunflower", "Super", "Tomato", "Venus Fly Trap", "Watermelon"
+}
+
+-- Tạo dropdown
+local seedDropdown = PlantSection:AddDropdown("SelectSeedToCheck", {
+    Title = "Chọn loại seed để kiểm tra trong Backpack",
+    Values = AllSeedNames,
+    Multi = false, -- chọn 1 loại thôi
+    Default = nil
 })
 
--- Khi chọn trong dropdown
-seedDropdown:OnChanged(function(selected)
-    if selected and #selected > 0 then
-        print("🌱 Các loại seed bạn đã chọn:")
-        for _, seedName in ipairs(selected) do
-            local found = false
-            for _, tool in ipairs(player.Backpack:GetChildren()) do
-                if tool:IsA("Tool") then
-                    local seedAttr = tool:GetAttribute("Seed")
-                    if seedAttr == seedName then
-                        local quantity = tool:GetAttribute("Quantity") or "Không rõ"
-                        print(string.format("✅ %s (Số lượng: %s)", seedAttr, quantity))
-                        found = true
-                        break
-                    end
-                end
-            end
-            if not found then
-                print("❌ Không tìm thấy trong kho:", seedName)
+-- Hàm kiểm tra seed trong backpack
+local function checkSeedInBackpack(selected)
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then
+        warn("❌ Không tìm thấy Backpack")
+        return
+    end
+
+    local found = false
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local seedValue = tool:GetAttribute("Seed")
+            local quantity = tool:GetAttribute("Quantity") or "Không có thuộc tính Quantity"
+            if seedValue == selected then
+                print("✅ Tìm thấy tool có seed:", seedValue)
+                print("📦 Tên tool:", tool.Name, " | 🔢 Quantity:", quantity)
+                found = true
             end
         end
-    else
-        print("⚠️ Bạn chưa chọn loại seed nào.")
     end
-end)
+
+    if not found then
+        print("⚠️ Không tìm thấy seed '" .. selected .. "' trong Backpack.")
+    end
+end
+
+-- Sự kiện khi chọn seed từ dropdown
+if seedDropdown then
+    seedDropdown:OnChanged(function(selected)
+        if selected and #selected > 0 then
+            local chosen = selected[1]
+            print("🔍 Bạn đã chọn:", chosen)
+            checkSeedInBackpack(chosen)
+        else
+            print("⚠️ Bạn chưa chọn seed nào.")
+        end
+    end)
+end
+
 
 
 --  -- TAB EVENT 
