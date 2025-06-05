@@ -500,25 +500,20 @@ local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
 local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
 local autoPlantEnabled = ConfigSystem.CurrentConfig.AutoPlantEnabled or false
 
-local seedDropdown = PlantSection:AddDropdown("SeedDropdown", {
-    Title = "Chọn Seed để trồng",
-    Values = allSeeds,
+local seedDropdown = PlaySection:AddDropdown("SelectSeedsToPlant", {
+    Title = "Chọn các loại Seed để Auto Plant",
+    Values = AllSeedNames, -- Danh sách bạn đã gửi
     Multi = true,
-    Default = selectedSeedsToPlant
-})
-
-seedDropdown:OnChanged(function(tbl)
-    selectedSeedsToPlant = tbl
-    ConfigSystem.CurrentConfig.SelectedSeeds = tbl
+    Default = selectedSeeds
+}):OnChanged(function(values)
+    selectedSeeds = values
+    ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeeds
+    print("🌱 Đã chọn các loại seed:")
+    for _, v in ipairs(selectedSeeds) do
+        print("✅", v)
+    end
     ConfigSystem.SaveConfig()
-    print("Đã chọn seed:", table.concat(tbl, ", "))
 end)
-
-local toggleObj = PlantSection:AddToggle("AutoPlantSeed", {
-    Title = "🌾 Auto Plant Selected Seeds",
-    Default = autoPlantEnabled
-})
-
 toggleObj:OnChanged(function(state)
     autoPlantEnabled = state
     ConfigSystem.CurrentConfig.AutoPlantEnabled = state
