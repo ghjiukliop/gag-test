@@ -478,7 +478,7 @@ local player = Players.LocalPlayer
 
 assert(PlayTab, "[AutoPlant] PlayTab chưa được tạo!")
 
-local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
+local PlantSection = PlayTab:AddSection("🌱2 Auto Plant Seed")
 
 -- Lấy config hiện tại, hoặc khởi tạo mặc định
 local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
@@ -498,40 +498,20 @@ local function getBackpackSeedList()
     return seedList
 end
 
--- Tạo dropdown ban đầu
+-- Tạo dropdown (chưa gắn sự kiện vội)
 local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
     Title = "Chọn các loại Seed để Auto Plant",
-    Values = getBackpackSeedList(),
+    Values = {}, -- Tạm thời rỗng, sẽ cập nhật sau
     Multi = true,
-    Default = selectedSeedsToPlant
+    Default = {}
 })
 
--- Gắn sự kiện chọn seed
-if seedDropdown then
-    seedDropdown:OnChanged(function(values)
-        selectedSeedsToPlant = values
-        ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
-        ConfigSystem.SaveConfig()
-
-        if #values == 0 then
-            print("⚠️ Bạn chưa chọn loại seed nào.")
-        else
-            print("🌱 Các loại seed đã chọn:")
-            for _, v in ipairs(values) do
-                print("✅", v)
-            end
-        end
-    end)
-else
-    warn("[AutoPlant] Lỗi tạo seedDropdown")
-end
-
--- Hàm cập nhật dropdown khi Backpack thay đổi
+-- Hàm cập nhật dropdown
 local function refreshSeedDropdown()
     if seedDropdown then
         local newSeedList = getBackpackSeedList()
 
-        -- Giữ lại những seed đã chọn còn hợp lệ
+        -- Giữ lại những seed đã chọn còn tồn tại trong backpack
         local validSelected = {}
         for _, selected in ipairs(selectedSeedsToPlant) do
             if table.find(newSeedList, selected) then
@@ -548,7 +528,28 @@ local function refreshSeedDropdown()
     end
 end
 
--- Theo dõi thay đổi Backpack
+-- Gắn sự kiện chọn seed sau khi dropdown đã có giá trị
+if seedDropdown then
+    seedDropdown:OnChanged(function(values)
+        if values and #values > 0 then
+            selectedSeedsToPlant = values
+            ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
+            ConfigSystem.SaveConfig()
+            print("🌱 Các loại seed đã chọn:")
+            for _, v in ipairs(values) do
+                print("✅", v)
+            end
+        else
+            print("⚠️ Bạn chưa chọn loại seed nào.")
+        end
+    end)
+
+    refreshSeedDropdown() -- Gọi lần đầu để điền giá trị
+else
+    warn("[AutoPlant] Lỗi tạo seedDropdown")
+end
+
+-- Theo dõi thay đổi trong Backpack
 player.Backpack.ChildAdded:Connect(refreshSeedDropdown)
 player.Backpack.ChildRemoved:Connect(refreshSeedDropdown)
 
