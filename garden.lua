@@ -478,7 +478,7 @@ local player = Players.LocalPlayer
 assert(PlayTab, "[AutoPlant] PlayTab chưa được tạo!")
 
 -- Tạo một section trong PlayTab
-local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
+local PlantSection = PlayTab:AddSection("🌱 2Auto Plant Seed")
 
 -- Danh sách seed cố định
 local AllSeedNames = {
