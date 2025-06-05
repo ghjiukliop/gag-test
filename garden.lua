@@ -535,7 +535,7 @@ if seedDropdown then
     seedDropdown:OnChanged(function(values)
         selectedSeedsToPlant = values
         ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
-        print("🌱 Đã chọn các loại seed:")
+        print("🌱1 Đã chọn các loại seed:")
         for _, v in ipairs(selectedSeedsToPlant) do
             print("✅", v)
         end
