@@ -470,78 +470,56 @@ task.spawn(function()
         task.wait(0.2)
     end
 end)
--- PLANTING
-------------------------------------------------------------
--- DANH SÁCH SEED CỐ ĐỊNH
-------------------------------------------------------------
-local AllSeedNames = {
-    "Apple","Avocado","Bamboo","Banana","Beanstalk","Blood Banana","Blue Lollipop","Blueberry","Cacao","Cactus",
-    "Candy Blossom","Candy Sunflower","Carrot","Celestiberry","Cherry Blossom","Chocolate Carrot","Coconut","Corn",
-    "Cranberry","Crimson Vine","Crocus","Cursed Fruit","Daffodil","Dandelion","Dragon Fruit","Durian","Easter Egg",
-    "Eggplant","Ember Lily","Foxglove","Glowshroom","Grape","Hive Fruit","Lemon","Lilac","Lotus","Mango",
-    "Mega Mushroom","Mint","Moon Blossom","Moon Mango","Moon Melon","Moonflower","Moonglow","Mushroom","Nectarine",
-    "Nightshade","Orange Tulip","Papaya","Passionfruit","Peach","Pear","Pepper","Pineapple","Pink Lily","Pink Tulip",
-    "Pumpkin","Purple Cabbage","Purple Dahlia","Raspberry","Red Lollipop","Rose","Soul Fruit","Starfruit",
-    "Strawberry","Succulent","Sunflower","Super","Tomato","Venus Fly Trap","Watermelon"
+-- PLANTINGlocal Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Danh sách seed cố định
+local AllSeeds = {
+    "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop", "Blueberry", "Cacao",
+    "Cactus", "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry", "Cherry Blossom", "Chocolate Carrot",
+    "Coconut", "Corn", "Cranberry", "Crimson Vine", "Crocus", "Cursed Fruit", "Daffodil", "Dandelion", "Dragon Fruit",
+    "Durian", "Easter Egg", "Eggplant", "Ember Lily", "Foxglove", "Glowshroom", "Grape", "Hive Fruit", "Lemon",
+    "Lilac", "Lotus", "Mango", "Mega Mushroom", "Mint", "Moon Blossom", "Moon Mango", "Moon Melon", "Moonflower",
+    "Moonglow", "Mushroom", "Nectarine", "Nightshade", "Orange Tulip", "Papaya", "Passionfruit", "Peach", "Pear",
+    "Pepper", "Pineapple", "Pink Lily", "Pink Tulip", "Pumpkin", "Purple Cabbage", "Purple Dahlia", "Raspberry",
+    "Red Lollipop", "Rose", "Soul Fruit", "Starfruit", "Strawberry", "Succulent", "Sunflower", "Super", "Tomato",
+    "Venus Fly Trap", "Watermelon"
 }
 
-------------------------------------------------------------
--- HELPERS  dict ⇆ array  (Fluent multi-select trả về dict)
-------------------------------------------------------------
-local function dictToArray(dict)
-    local arr = {}
-    for name, picked in pairs(dict) do
-        if picked then table.insert(arr, name) end
-    end
-    return arr
-end
+-- Thêm section vào tab Play
+local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
 
-------------------------------------------------------------
--- HÀM KIỂM TRA SEED CÓ TRONG BACKPACK?
-------------------------------------------------------------
-local function isSeedInBackpack(seedName)
-    local backpack = player:FindFirstChild("Backpack")
-    if not backpack then return false end
-    for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and tool:GetAttribute("Seed") == seedName then
-            return true
-        end
-    end
-    return false
-end
-
-------------------------------------------------------------
--- DROPDOWN
-------------------------------------------------------------
+-- Dropdown chọn seed từ danh sách cố định
 local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
-    Title   = "Chọn Seed cần kiểm tra",
-    Values  = AllSeedNames,
-    Multi   = true,
-    Default = {}          -- không tick sẵn
+    Title = "Chọn các loại Seed",
+    Values = AllSeeds,
+    Multi = true,
+    Default = {}
 })
 
-if not seedDropdown then
-    warn("[AutoPlant] Lỗi tạo seedDropdown");  return
-end
-
-------------------------------------------------------------
--- SỰ KIỆN NGƯỜI CHƠI CHỌN / BỎ CHỌN
-------------------------------------------------------------
-seedDropdown:OnChanged(function(dictValues)        -- dictValues = {["Apple"]=true, ...}
-    local pickedSeeds = dictToArray(dictValues)    -- chuyển thành array
-
-    if #pickedSeeds == 0 then
-        print("⚠️ Bạn chưa chọn seed nào.")
-        return
-    end
-
-    print("🔍 Kiểm tra seed đã chọn:")
-    for _, seedName in ipairs(pickedSeeds) do
-        if isSeedInBackpack(seedName) then
-            print("🟢", seedName, "→ Có trong Backpack")
-        else
-            print("🔴", seedName, "→ Không có trong Backpack")
+-- Khi chọn trong dropdown
+seedDropdown:OnChanged(function(selected)
+    if selected and #selected > 0 then
+        print("🌱 Các loại seed bạn đã chọn:")
+        for _, seedName in ipairs(selected) do
+            local found = false
+            for _, tool in ipairs(player.Backpack:GetChildren()) do
+                if tool:IsA("Tool") then
+                    local seedAttr = tool:GetAttribute("Seed")
+                    if seedAttr == seedName then
+                        local quantity = tool:GetAttribute("Quantity") or "Không rõ"
+                        print(string.format("✅ %s (Số lượng: %s)", seedAttr, quantity))
+                        found = true
+                        break
+                    end
+                end
+            end
+            if not found then
+                print("❌ Không tìm thấy trong kho:", seedName)
+            end
         end
+    else
+        print("⚠️ Bạn chưa chọn loại seed nào.")
     end
 end)
 
