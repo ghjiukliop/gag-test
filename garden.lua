@@ -475,14 +475,14 @@ end)
 
 -- 🌱 Auto Plant Seed Section trong tab Play
 -- 🌱 Giao diện Auto Plant Seed trong tab Play với lưu cấu hình
+-- Yêu cầu: Fluent UI đã được khởi tạo với biến Window và PlayTab đã có
 
--- Yêu cầu: Fluent UI đã được khởi tạo với biến Window
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
 -- Danh sách tất cả seed trong game
-local AllSeedNames  = {
+local AllSeedNames = {
     "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop", "Blueberry", "Cacao", "Cactus",
     "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry", "Cherry Blossom", "Chocolate Carrot", "Coconut", "Corn",
     "Cranberry", "Crimson Vine", "Crocus", "Cursed Fruit", "Daffodil", "Dandelion", "Dragon Fruit", "Durian", "Easter Egg",
@@ -493,14 +493,17 @@ local AllSeedNames  = {
     "Sunflower", "Super", "Tomato", "Venus Fly Trap", "Watermelon"
 }
 
+-- Kiểm tra PlayTab đã có chưa
+assert(PlayTab, "[AutoPlant] PlayTab chưa được tạo!")
 
-
-
+-- Thêm Section trong tab Play
 local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
 
+-- Lấy config hiện tại, hoặc khởi tạo mặc định
 local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
 local autoPlantEnabled = ConfigSystem.CurrentConfig.AutoPlantEnabled or false
 
+-- Tạo Dropdown chọn nhiều Seed
 local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
     Title = "Chọn các loại Seed để Auto Plant",
     Values = AllSeedNames,
@@ -518,11 +521,16 @@ if seedDropdown then
         end
         ConfigSystem.SaveConfig()
     end)
-    seedDropdown:SetValue(selectedSeedsToPlant)
+
+    -- Đặt giá trị dropdown ban đầu nếu có
+    if #selectedSeedsToPlant > 0 then
+        seedDropdown:SetValue(selectedSeedsToPlant)
+    end
 else
-    warn("Lỗi tạo seedDropdown")
+    warn("[AutoPlant] Lỗi tạo seedDropdown")
 end
 
+-- Tạo toggle bật/tắt Auto Plant
 local toggleObj = PlantSection:AddToggle("AutoPlantToggle", {
     Title = "Auto Plant Selected Seeds",
     Default = autoPlantEnabled
@@ -535,37 +543,23 @@ if toggleObj then
         ConfigSystem.SaveConfig()
         print(state and "✅ Auto Plant BẬT" or "⛔ Auto Plant TẮT")
     end)
+
     toggleObj:SetValue(autoPlantEnabled)
 else
-    warn("Lỗi tạo toggleObj")
+    warn("[AutoPlant] Lỗi tạo toggleObj")
 end
 
-
-local toggleObj = PlantSection:AddToggle("AutoPlantToggle", {
-    Title = "Auto Plant Selected Seeds",
-    Default = autoPlantEnabled
-}):OnChanged(function(state)
-    autoPlantEnabled = state
-    ConfigSystem.CurrentConfig.AutoPlantEnabled = state
-    ConfigSystem.SaveConfig()
-    print(state and "✅ Auto Plant BẬT" or "⛔ Auto Plant TẮT")
-end)
-
-
--- Gán lại UI trạng thái cũ (nếu có)
-seedDropdown:SetValue(selectedSeedsToPlant)
-toggleObj:SetValue(autoPlantEnabled)
-
--- 🚜 Vòng lặp auto plant
+-- Hàm tạo vị trí random để trồng cây gần người chơi
 local function getRandomPlantPosition()
     local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
         local base = hrp.Position
         return base + Vector3.new(math.random(-5,5), 0, math.random(-5,5))
     end
-    return Vector3.zero
+    return Vector3.new(0,0,0)
 end
 
+-- Vòng lặp auto plant
 task.spawn(function()
     while true do
         if autoPlantEnabled and #selectedSeedsToPlant > 0 then
@@ -575,6 +569,7 @@ task.spawn(function()
                 for _, seedName in ipairs(selectedSeedsToPlant) do
                     local tool = backpack:FindFirstChild(seedName)
                     if tool and tool:GetAttribute("ITEM_TYPE") == "Seed" then
+                        -- Cầm seed lên tay
                         tool.Parent = char
                         repeat
                             local pos = getRandomPlantPosition()
