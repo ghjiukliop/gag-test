@@ -471,14 +471,14 @@ task.spawn(function()
     end
 end)
 -- planting
-
+local PlantSection = PlayTab:AddSection("🌱2 Auto Plant Seed")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
 local plantEvent = ReplicatedStorage.GameEvents:FindFirstChild("Plant_RE")
 local farm = workspace:FindFirstChild("Farm")
-local PlantSection = PlayTab:AddSection("🌱2 Auto Plant Seed")
+
 -- Danh sách seed cố định để dropdown hiển thị
 local allSeeds = {
     "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop",
@@ -667,7 +667,6 @@ autoPlantToggle:OnChanged(function(enabled)
         print("Dừng Auto Plant Seed.")
     end
 end)
-
 
 
 --  -- TAB EVENT 
