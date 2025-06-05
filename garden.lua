@@ -472,129 +472,112 @@ task.spawn(function()
 end)
 
 
---
-------------------------------------------------------------------
--- SECTION “🌱 Auto Plant”  – đặt sau khi tạo EventTab / Window
-------------------------------------------------------------------
 
-local seedList = { -- TẤT CẢ seed bạn đưa
-	"Apple","Avocado","Bamboo","Banana","Beanstalk","Blood Banana",
-	"Blue Lollipop","Blueberry","Cacao","Cactus","Candy Blossom","Candy Sunflower",
-	"Carrot","Celestiberry","Cherry Blossom","Chocolate Carrot","Coconut","Corn",
-	"Cranberry","Crimson Vine","Crocus","Cursed Fruit","Daffodil","Dandelion",
-	"Dragon Fruit","Durian","Easter Egg","Eggplant","Ember Lily","Foxglove",
-	"Glowshroom","Grape","Hive Fruit","Lemon","Lilac","Lotus","Mango","Mega Mushroom",
-	"Mint","Moon Blossom","Moon Mango","Moon Melon","Moonflower","Moonglow","Mushroom",
-	"Nectarine","Nightshade","Orange Tulip","Papaya","Passionfruit","Peach","Pear",
-	"Pepper","Pineapple","Pink Lily","Pink Tulip","Pumpkin","Purple Cabbage",
-	"Purple Dahlia","Raspberry","Red Lollipop","Rose","Soul Fruit","Starfruit",
-	"Strawberry","Succulent","Sunflower","Super","Tomato","Venus Fly Trap","Watermelon"
-}
+-- 🌱 Auto Plant Seed Section trong tab Play
+local PlantSection = PlayTab:AddSection("🌱 Auto Plant")
 
----------------------------------------------------------------
--- TẠO UI
----------------------------------------------------------------
-local PlantSection = EventTab:AddSection("🌱 Auto Plant")
-
-local selectedSeeds = {}
+local selectedSeedsToPlant = {}
 local autoPlantEnabled = false
 
--- Dropdown đa chọn
+-- Dropdown chọn seed (multi-select)
 PlantSection:AddDropdown("SeedDropdown", {
-	Title = "Select Seeds to Plant",
-	Values = seedList,
-	Multi = true,
-	Default = {},
-	Tooltip = "Chọn một hoặc nhiều loại seed",
+    Title = "Chọn Seed để trồng",
+    Values = {
+        "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop", "Blueberry",
+        "Cacao", "Cactus", "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry", "Cherry Blossom",
+        "Chocolate Carrot", "Coconut", "Corn", "Cranberry", "Crimson Vine", "Crocus", "Cursed Fruit",
+        "Daffodil", "Dandelion", "Dragon Fruit", "Durian", "Easter Egg", "Eggplant", "Ember Lily", "Foxglove",
+        "Glowshroom", "Grape", "Hive Fruit", "Lemon", "Lilac", "Lotus", "Mango", "Mega Mushroom", "Mint",
+        "Moon Blossom", "Moon Mango", "Moon Melon", "Moonflower", "Moonglow", "Mushroom", "Nectarine",
+        "Nightshade", "Orange Tulip", "Papaya", "Passionfruit", "Peach", "Pear", "Pepper", "Pineapple",
+        "Pink Lily", "Pink Tulip", "Pumpkin", "Purple Cabbage", "Purple Dahlia", "Raspberry", "Red Lollipop",
+        "Rose", "Soul Fruit", "Starfruit", "Strawberry", "Succulent", "Sunflower", "Super", "Tomato",
+        "Venus Fly Trap", "Watermelon"
+    },
+    Multi = true,
+    Default = {},
+    Callback = function(selected)
+        selectedSeedsToPlant = selected
+        print("🧺 Seeds đã chọn để trồng:", table.concat(selectedSeedsToPlant, ", "))
+    end
 })
-:OnChanged(function(tbl)
-	selectedSeeds = {}
-	for name, chosen in pairs(tbl) do
-		if chosen then table.insert(selectedSeeds, name) end
-	end
-	print("📦 Seed đã chọn:", table.concat(selectedSeeds, ", "))
-end)
 
--- Toggle Auto Plant
+-- Toggle bật/tắt auto plant
 PlantSection:AddToggle("ToggleAutoPlant", {
-	Title = "Auto Plant Selected Seeds",
-	Default = false,
+    Title = "🌱 Auto Plant Selected Seeds",
+    Default = false,
+    Callback = function(state)
+        autoPlantEnabled = state
+        print(state and "✅ Auto Plant đã BẬT" or "⛔ Auto Plant đã TẮT")
+    end
 })
-:OnChanged(function(state)
-	autoPlantEnabled = state
-	Fluent:Notify({
-		Title   = "Auto Plant",
-		Content = state and "🟢 Auto Plant ON" or "🔴 Auto Plant OFF",
-		Duration = 4
-	})
-end)
 
----------------------------------------------------------------
--- HÀM TIỆN ÍCH
----------------------------------------------------------------
-local Players            = game:GetService("Players")
-local ReplicatedStorage  = game:GetService("ReplicatedStorage")
-local PlantRemote        = ReplicatedStorage.GameEvents:WaitForChild("Plant_RE")
-local player             = Players.LocalPlayer
-local backpack           = player:WaitForChild("Backpack")
-
+-- Hàm tìm seed trong Backpack
 local function getSeedTool(seedName)
-	for _, tool in ipairs(backpack:GetChildren()) do
-		if tool:IsA("Tool") 
-		   and tool:GetAttribute("ITEM_TYPE") == "Seed"
-		   and tool.Name == seedName then
-			return tool
-		end
-	end
-	return nil
+    local player = game:GetService("Players").LocalPlayer
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return nil end
+
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") and tool:GetAttribute("ITEM_TYPE") == "Seed" and tool.Name == seedName then
+            return tool
+        end
+    end
+
+    return nil
 end
 
+-- Hàm cầm tool lên tay
 local function holdTool(tool)
-	if player.Character then
-		tool.Parent = player.Character
-	end
+    local player = game:GetService("Players").LocalPlayer
+    if player.Character and tool then
+        tool.Parent = player.Character
+        task.wait(0.2)
+    end
 end
 
-local function charPosition()
-	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-	return hrp and hrp.Position or Vector3.new()
-end
-
+-- Kiểm tra tool còn trên tay
 local function toolStillHeld(tool)
-	if not tool then return false end
-	return tool.Parent == player.Character
+    local player = game:GetService("Players").LocalPlayer
+    return player.Character and tool and tool.Parent == player.Character
 end
 
----------------------------------------------------------------
--- VÒNG LẶP AUTO PLANT
----------------------------------------------------------------
+-- Tọa độ ngẫu nhiên để trồng (hoặc bạn có thể đặt sẵn tọa độ cụ thể)
+local function getRandomPlantPosition()
+    return Vector3.new(
+        math.random(-100, 100),
+        0.1,
+        math.random(-100, 100)
+    )
+end
+
+-- Remote Event để trồng
+local PlantRemote = game:GetService("ReplicatedStorage"):WaitForChild("GameEvents"):WaitForChild("Plant_RE")
+
+-- Luồng chính auto plant
 task.spawn(function()
-	while true do
-		if autoPlantEnabled and #selectedSeeds > 0 then
-			for _, seedName in ipairs(selectedSeeds) do
-				local tool = getSeedTool(seedName)
-				if tool then
-					print("🌱 Tìm thấy seed:", seedName, "– bắt đầu trồng")
-					holdTool(tool)
+    while true do
+        if autoPlantEnabled and #selectedSeedsToPlant > 0 then
+            for _, seedName in ipairs(selectedSeedsToPlant) do
+                local tool = getSeedTool(seedName)
+                if tool then
+                    print("🌱 Tìm thấy seed:", seedName, "– bắt đầu trồng")
+                    holdTool(tool)
 
-					-- lặp cho tới khi tool biến mất (được trồng xong)
-					while toolStillHeld(tool) and autoPlantEnabled do
-						-- gửi Plant_RE, trồng tại vị trí hiện tại của nhân vật
-						local args = {
-							[1] = charPosition(), -- vị trí trồng
-							[2] = seedName       -- tên seed
-						}
-						PlantRemote:FireServer(unpack(args))
-						task.wait(1) -- chờ 1s rồi thử lại nếu tool chưa biến mất
-					end
-					print("✅ Đã trồng xong:", seedName)
-				end
-			end
-		end
-		task.wait(0.5)
-	end
+                    while toolStillHeld(tool) and autoPlantEnabled do
+                        local position = getRandomPlantPosition()
+                        local args = { position, seedName }
+                        PlantRemote:FireServer(unpack(args))
+                        task.wait(1)
+                    end
+
+                    print("✅ Đã trồng xong seed:", seedName)
+                end
+            end
+        end
+        task.wait(1)
+    end
 end)
-
 
 --  -- TAB EVENT 
 
