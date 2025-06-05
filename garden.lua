@@ -554,22 +554,41 @@ end)
 ----------------------------------------------------
 -- Khi người chơi THỰC SỰ thay đổi lựa chọn
 ----------------------------------------------------
-seedDropdown:OnChanged(function(dictValues)   -- dictValues là dictionary
-    if dictValues and next(dictValues) then   -- có ít nhất 1 lựa chọn
+seedDropdown:OnChanged(function(dictValues)
+    if dictValues and next(dictValues) then
         selectedSeedsToPlant = dictToArray(dictValues)
+
         print("🌱 Các seed đã chọn:")
-        for _, name in ipairs(selectedSeedsToPlant) do
-            print("✅", name)
+        for _, seedName in ipairs(selectedSeedsToPlant) do
+            -- Tìm tool có attribute Seed == seedName
+            local quantityStr = "(Không rõ số lượng)"
+            local backpack = player:FindFirstChild("Backpack")
+            if backpack then
+                for _, tool in ipairs(backpack:GetChildren()) do
+                    if tool:IsA("Tool") and tool:GetAttribute("Seed") == seedName then
+                        local qty = tool:GetAttribute("Quantity")
+                        if qty then
+                            quantityStr = "(Số lượng: " .. tostring(qty) .. ")"
+                        else
+                            quantityStr = "(Không có attribute Quantity)"
+                        end
+                        break
+                    end
+                end
+            end
+
+            print("✅", seedName, quantityStr)
         end
     else
         selectedSeedsToPlant = {}
         print("⚠️ Bạn chưa chọn seed nào.")
     end
 
-    -- Lưu lại
+    -- Lưu lại config
     ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
     ConfigSystem.SaveConfig()
 end)
+
 
 ----------------------------------------------------
 -- Theo dõi Backpack để làm mới danh sách seed (nhưng KHÔNG reset lựa chọn)
