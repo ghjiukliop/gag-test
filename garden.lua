@@ -476,7 +476,7 @@ local player = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
 assert(PlayTab, "[AutoPlant] PlayTab chưa được tạo!")
-local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
+local PlantSection = PlayTab:AddSection("🌱2 Auto Plant Seed")
 
 ----------------------------------------------------
 -- Helpers: dict ⇆ array
