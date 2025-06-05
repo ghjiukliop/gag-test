@@ -474,89 +474,149 @@ end)
 
 
 -- 🌱 Auto Plant Seed Section trong tab Play
-local PlantSection = PlayTab:AddSection("🌱2 Auto Plant Seed")
+-- 🌱 Giao diện Auto Plant Seed trong tab Play với lưu cấu hình
 
-local selectedSeedsToPlant = {}
-local autoPlantEnabled = false
+-- Yêu cầu: Fluent UI đã được khởi tạo với biến Window
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local player = Players.LocalPlayer
 
--- Danh sách toàn bộ seed trong game
+-- Danh sách tất cả seed trong game
 local allSeeds = {
-    "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop", "Blueberry",
-    "Cacao", "Cactus", "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry", "Cherry Blossom", 
-    "Chocolate Carrot", "Coconut", "Corn", "Cranberry", "Crimson Vine", "Crocus", "Cursed Fruit", "Daffodil",
-    "Dandelion", "Dragon Fruit", "Durian", "Easter Egg", "Eggplant", "Ember Lily", "Foxglove", "Glowshroom",
-    "Grape", "Hive Fruit", "Lemon", "Lilac", "Lotus", "Mango", "Mega Mushroom", "Mint", "Moon Blossom", 
-    "Moon Mango", "Moon Melon", "Moonflower", "Moonglow", "Mushroom", "Nectarine", "Nightshade", 
-    "Orange Tulip", "Papaya", "Passionfruit", "Peach", "Pear", "Pepper", "Pineapple", "Pink Lily", 
-    "Pink Tulip", "Pumpkin", "Purple Cabbage", "Purple Dahlia", "Raspberry", "Red Lollipop", "Rose", 
-    "Soul Fruit", "Starfruit", "Strawberry", "Succulent", "Sunflower", "Super", "Tomato", "Venus Fly Trap", "Watermelon"
+    "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop", "Blueberry", "Cacao", "Cactus",
+    "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry", "Cherry Blossom", "Chocolate Carrot", "Coconut", "Corn",
+    "Cranberry", "Crimson Vine", "Crocus", "Cursed Fruit", "Daffodil", "Dandelion", "Dragon Fruit", "Durian", "Easter Egg",
+    "Eggplant", "Ember Lily", "Foxglove", "Glowshroom", "Grape", "Hive Fruit", "Lemon", "Lilac", "Lotus", "Mango", "Mega Mushroom",
+    "Mint", "Moon Blossom", "Moon Mango", "Moon Melon", "Moonflower", "Moonglow", "Mushroom", "Nectarine", "Nightshade",
+    "Orange Tulip", "Papaya", "Passionfruit", "Peach", "Pear", "Pepper", "Pineapple", "Pink Lily", "Pink Tulip", "Pumpkin",
+    "Purple Cabbage", "Purple Dahlia", "Raspberry", "Red Lollipop", "Rose", "Soul Fruit", "Starfruit", "Strawberry", "Succulent",
+    "Sunflower", "Super", "Tomato", "Venus Fly Trap", "Watermelon"
 }
 
--- Dropdown chọn seed
+-- 🧠 Hệ thống lưu cấu hình
+local ConfigSystem = {}
+ConfigSystem.FileName = "GAGConfig_" .. player.Name .. ".json"
+ConfigSystem.DefaultConfig = {
+    SelectedSeeds = {},
+    AutoPlantEnabled = false
+}
+ConfigSystem.CurrentConfig = {}
+ConfigSystem.LastSaveTime = 0
+ConfigSystem.SaveCooldown = 2
+ConfigSystem.PendingSave = false
+
+function ConfigSystem.SaveConfig()
+    local currentTime = os.time()
+    if currentTime - ConfigSystem.LastSaveTime < ConfigSystem.SaveCooldown then
+        ConfigSystem.PendingSave = true
+        return
+    end
+
+    local success, err = pcall(function()
+        local HttpService = game:GetService("HttpService")
+        writefile(ConfigSystem.FileName, HttpService:JSONEncode(ConfigSystem.CurrentConfig))
+    end)
+
+    if success then
+        ConfigSystem.LastSaveTime = currentTime
+        ConfigSystem.PendingSave = false
+    else
+        warn("Lưu cấu hình thất bại:", err)
+    end
+end
+
+function ConfigSystem.LoadConfig()
+    local success, content = pcall(function()
+        if isfile(ConfigSystem.FileName) then
+            return readfile(ConfigSystem.FileName)
+        end
+        return nil
+    end)
+
+    if success and content then
+        local success2, data = pcall(function()
+            local HttpService = game:GetService("HttpService")
+            return HttpService:JSONDecode(content)
+        end)
+
+        if success2 and data then
+            for k,v in pairs(ConfigSystem.DefaultConfig) do
+                if data[k] == nil then data[k] = v end
+            end
+            ConfigSystem.CurrentConfig = data
+        end
+    else
+        ConfigSystem.CurrentConfig = ConfigSystem.DefaultConfig
+    end
+end
+
+ConfigSystem.LoadConfig()
+
+-- 🌿 Khởi tạo UI trong tab Play
+local PlayTab = Window:AddTab({
+    Title = "Play",
+    Icon = "rbxassetid://7734053495"
+})
+
+local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
+local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
+local autoPlantEnabled = ConfigSystem.CurrentConfig.AutoPlantEnabled or false
+
 local seedDropdown = PlantSection:AddDropdown("SeedDropdown", {
     Title = "Chọn Seed để trồng",
     Values = allSeeds,
     Multi = true,
-    Default = {}
-}):OnChanged(function(selected)
-    selectedSeedsToPlant = selected
-    Fluent.ConfigSystem:Write("SelectedSeeds", selected) -- Lưu config
-    print("🧺 Seeds đã chọn để trồng:", table.concat(selected, ", "))
+    Default = selectedSeedsToPlant
+})
 
-    local backpack = game:GetService("Players").LocalPlayer:FindFirstChild("Backpack")
-    if backpack then
-        for _, seedName in ipairs(selectedSeedsToPlant) do
-            local item = backpack:FindFirstChild(seedName)
-            if item and item:GetAttribute("ITEM_TYPE") == "Seed" then
-                print("✅ Bạn có thể trồng:", seedName)
-            else
-                print("❌ Bạn không có:", seedName)
-            end
-        end
-    end
+seedDropdown:OnChanged(function(tbl)
+    selectedSeedsToPlant = tbl
+    ConfigSystem.CurrentConfig.SelectedSeeds = tbl
+    ConfigSystem.SaveConfig()
+    print("Đã chọn seed:", table.concat(tbl, ", "))
 end)
 
--- Toggle bật/tắt auto plant
-PlantSection:AddToggle("AutoPlantSeed", {
+local toggleObj = PlantSection:AddToggle("AutoPlantSeed", {
     Title = "🌾 Auto Plant Selected Seeds",
-    Default = false
-}):OnChanged(function(state)
+    Default = autoPlantEnabled
+})
+
+toggleObj:OnChanged(function(state)
     autoPlantEnabled = state
-    Fluent.ConfigSystem:Write("AutoPlantEnabled", state) -- Lưu config
-    print(state and "✅ Auto Plant đã BẬT" or "⛔ Auto Plant đã TẮT")
+    ConfigSystem.CurrentConfig.AutoPlantEnabled = state
+    ConfigSystem.SaveConfig()
+    print(state and "✅ Auto Plant BẬT" or "⛔ Auto Plant TẮT")
 end)
 
--- Vòng lặp tự động trồng
+-- Gán lại UI trạng thái cũ (nếu có)
+seedDropdown:SetValue(selectedSeedsToPlant)
+toggleObj:SetValue(autoPlantEnabled)
+
+-- 🚜 Vòng lặp auto plant
+local function getRandomPlantPosition()
+    local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        local base = hrp.Position
+        return base + Vector3.new(math.random(-5,5), 0, math.random(-5,5))
+    end
+    return Vector3.zero
+end
+
 task.spawn(function()
     while true do
         if autoPlantEnabled and #selectedSeedsToPlant > 0 then
-            local player = game:GetService("Players").LocalPlayer
-            local character = player.Character
             local backpack = player:FindFirstChild("Backpack")
-
-            if character and backpack then
+            local char = player.Character
+            if backpack and char then
                 for _, seedName in ipairs(selectedSeedsToPlant) do
-                    local item = backpack:FindFirstChild(seedName)
-                    if item and item:GetAttribute("ITEM_TYPE") == "Seed" then
-                        -- Cầm seed
-                        item.Parent = character
-                        print("🌱 Đang cầm seed:", seedName)
-
-                        -- Vị trí ngẫu nhiên gần nhân vật
-                        local pos = character:FindFirstChild("HumanoidRootPart") and character.HumanoidRootPart.Position
-                        if pos then
-                            local randomOffset = Vector3.new(math.random(-5, 5), 0, math.random(-5, 5))
-                            local plantPosition = pos + randomOffset
-
-                            local args = {
-                                [1] = plantPosition,
-                                [2] = seedName
-                            }
-
-                            game:GetService("ReplicatedStorage").GameEvents.Plant_RE:FireServer(unpack(args))
-                            print("📦 Đã trồng:", seedName, "tại", tostring(plantPosition))
+                    local tool = backpack:FindFirstChild(seedName)
+                    if tool and tool:GetAttribute("ITEM_TYPE") == "Seed" then
+                        tool.Parent = char
+                        repeat
+                            local pos = getRandomPlantPosition()
+                            ReplicatedStorage.GameEvents.Plant_RE:FireServer(pos, seedName)
                             task.wait(1)
-                        end
+                        until tool.Parent ~= char or not autoPlantEnabled
                     end
                 end
             end
@@ -565,19 +625,6 @@ task.spawn(function()
     end
 end)
 
--- 🧠 Tải lại config khi khởi động UI
-task.spawn(function()
-    local lastSeeds = Fluent.ConfigSystem:Read("SelectedSeeds") or {}
-    local lastToggle = Fluent.ConfigSystem:Read("AutoPlantEnabled") or false
-
-    if type(lastSeeds) == "table" then
-        selectedSeedsToPlant = lastSeeds
-        seedDropdown:SetValue(lastSeeds)
-    end
-
-    autoPlantEnabled = lastToggle
-    Fluent.Toggles.AutoPlantSeed:SetValue(lastToggle)
-end)
 --  -- TAB EVENT 
 
 -- Giả sử bạn đã có EventTab rồi:
