@@ -471,170 +471,203 @@ task.spawn(function()
     end
 end)
 -- planting
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
-local RunService = game:GetService("RunService")
 
-assert(PlayTab, "[AutoPlant] PlayTab chưa được tạo!")
-local PlantSection = PlayTab:AddSection("🌱2 Auto Plant Seed")
+local plantEvent = ReplicatedStorage.GameEvents:FindFirstChild("Plant_RE")
+local farm = workspace:FindFirstChild("Farm")
 
-----------------------------------------------------
--- Helpers: dict ⇆ array
-----------------------------------------------------
-local function arrayToDict(arr)
-    local dict = {}
-    for _, v in ipairs(arr) do
-        dict[v] = true
-    end
-    return dict
-end
-
-local function dictToArray(dict)
-    local arr = {}
-    for name, picked in pairs(dict) do
-        if picked then
-            table.insert(arr, name)
-        end
-    end
-    return arr
-end
-
-----------------------------------------------------
--- Constants
-----------------------------------------------------
-local ALL_SEEDS = {
+-- Danh sách seed cố định để dropdown hiển thị
+local allSeeds = {
     "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop",
-    "Blueberry", "Cacao", "Cactus", "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry",
-    "Cherry Blossom", "Chocolate Carrot", "Coconut", "Corn", "Cranberry", "Crimson Vine", "Crocus",
-    "Cursed Fruit", "Daffodil", "Dandelion", "Dragon Fruit", "Durian", "Easter Egg", "Eggplant",
-    "Ember Lily", "Foxglove", "Glowshroom", "Grape", "Hive Fruit", "Lemon", "Lilac", "Lotus", "Mango",
-    "Mega Mushroom", "Mint", "Moon Blossom", "Moon Mango", "Moon Melon", "Moonflower", "Moonglow",
-    "Mushroom", "Nectarine", "Nightshade", "Orange Tulip", "Papaya", "Passionfruit", "Peach", "Pear",
-    "Pepper", "Pineapple", "Pink Lily", "Pink Tulip", "Pumpkin", "Purple Cabbage", "Purple Dahlia",
-    "Raspberry", "Red Lollipop", "Rose", "Soul Fruit", "Starfruit", "Strawberry", "Succulent",
-    "Sunflower", "Super", "Tomato", "Venus Fly Trap", "Watermelon"
+    "Blueberry", "Cacao", "Cactus", "Candy Blossom", "Candy Sunflower", "Carrot",
+    "Celestiberry", "Cherry Blossom", "Chocolate Carrot", "Coconut", "Corn", "Cranberry",
+    "Crimson Vine", "Crocus", "Cursed Fruit", "Daffodil", "Dandelion", "Dragon Fruit",
+    "Durian", "Easter Egg", "Eggplant", "Ember Lily", "Foxglove", "Glowshroom",
+    "Grape", "Hive Fruit", "Lemon", "Lilac", "Lotus", "Mango", "Mega Mushroom", "Mint",
+    "Moon Blossom", "Moon Mango", "Moon Melon", "Moonflower", "Moonglow", "Mushroom",
+    "Nectarine", "Nightshade", "Orange Tulip", "Papaya", "Passionfruit", "Peach",
+    "Pear", "Pepper", "Pineapple", "Pink Lily", "Pink Tulip", "Pumpkin", "Purple Cabbage",
+    "Purple Dahlia", "Raspberry", "Red Lollipop", "Rose", "Soul Fruit", "Starfruit",
+    "Strawberry", "Succulent", "Sunflower", "Super", "Tomato", "Venus Fly Trap", "Watermelon"
 }
 
-----------------------------------------------------
--- Config
-----------------------------------------------------
-local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
-local autoPlantingEnabled = ConfigSystem.CurrentConfig.AutoPlantEnabled or false
-
-----------------------------------------------------
--- Dropdown chọn seed
-----------------------------------------------------
+-- Ô dropdown chọn nhiều seed
 local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
-    Title = "Chọn các loại Seed để Auto Plant",
-    Values = ALL_SEEDS,
+    Title = "Chọn Seed để Auto Plant",
+    Values = allSeeds,
     Multi = true,
-    Default = arrayToDict(selectedSeedsToPlant)
+    Default = {}
 })
 
-seedDropdown:OnChanged(function(dictValues)
-    selectedSeedsToPlant = dictToArray(dictValues)
+local selectedSeeds = {}
 
-    if #selectedSeedsToPlant > 0 then
-        print("🌱 Các seed đã chọn:")
-        for _, seedName in ipairs(selectedSeedsToPlant) do
-            local found = false
-            local backpack = player:FindFirstChild("Backpack")
-            if backpack then
-                for _, tool in ipairs(backpack:GetChildren()) do
-                    if tool:IsA("Tool") and tool:GetAttribute("Seed") == seedName then
-                        print("✅", seedName, "(có trong Backpack)")
-                        found = true
-                        break
-                    end
-                end
-            end
-            if not found then
-                print("❌", seedName, "(KHÔNG tìm thấy trong Backpack)")
-            end
+seedDropdown:OnChanged(function(values)
+    selectedSeeds = values or {}
+    if #selectedSeeds > 0 then
+        print("Bạn đã chọn các seed sau:")
+        for _, s in ipairs(selectedSeeds) do
+            print(" -", s)
         end
     else
-        print("⚠️ Bạn chưa chọn loại seed nào.")
+        print("Bạn chưa chọn seed nào.")
     end
-
-    ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
-    ConfigSystem.SaveConfig()
 end)
 
-----------------------------------------------------
--- Toggle Auto Plant
-----------------------------------------------------
-local toggle = PlantSection:AddToggle("ToggleAutoPlanting", {
-    Title = "Bật Auto Planting",
-    Default = autoPlantingEnabled
+-- Toggle auto plant
+local autoPlantToggle = PlantSection:AddToggle("AutoPlantSeedToggle", {
+    Text = "Auto Plant Seed",
+    Enabled = false,
+    Tooltip = "Bật/tắt tự động gieo hạt đã chọn"
 })
 
-toggle:OnChanged(function(value)
-    autoPlantingEnabled = value
-    ConfigSystem.CurrentConfig.AutoPlantEnabled = value
-    ConfigSystem.SaveConfig()
-    print(value and "🟢 Auto Planting đã BẬT" or "🔴 Auto Planting đã TẮT")
-end)
+-- Hàm kiểm tra trong backpack có seed đó không (dựa attribute "Seed")
+local function hasSeedInBackpack(seedName)
+    local backpack = player:FindFirstChild("Backpack")
+    if not backpack then return false end
+    for _, tool in ipairs(backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            local seedAttr = tool:GetAttribute("Seed")
+            if seedAttr and seedAttr == seedName then
+                return true, tool
+            end
+        end
+    end
+    return false
+end
 
-----------------------------------------------------
--- Auto Planting Logic
-----------------------------------------------------
-task.spawn(function()
-    while true do
-        if autoPlantingEnabled and #selectedSeedsToPlant > 0 then
-            local farm = workspace:FindFirstChild("Farm")
-            if farm then
-                local ownerFarm = nil
-                for _, f in ipairs(farm:GetChildren()) do
-                    if f:FindFirstChild("Owner") and f.Owner.Value == player then
-                        ownerFarm = f
-                        break
-                    end
-                end
+-- Hàm đặt cây theo logic bạn gửi
+local function autoPlantSeeds()
+    if not farm or not plantEvent then
+        warn("Không tìm thấy Farm hoặc Plant_RE Event!")
+        return
+    end
 
-                if ownerFarm and ownerFarm:FindFirstChild("Important") then
-                    local canPlant = ownerFarm.Important:FindFirstChild("CanPlant")
-                    if canPlant then
-                        -- Duyệt từng vị trí trong CanPlant
-                        for _, pos in ipairs(canPlant:GetChildren()) do
-                            if pos:IsA("BasePart") and #selectedSeedsToPlant > 0 then
-                                -- Lấy Tool tương ứng từ Backpack
-                                local backpack = player:FindFirstChild("Backpack")
-                                if backpack then
-                                    for _, tool in ipairs(backpack:GetChildren()) do
-                                        if tool:IsA("Tool") then
-                                            local seedAttr = tool:GetAttribute("Seed")
-                                            if seedAttr and table.find(selectedSeedsToPlant, seedAttr) then
-                                                -- Teleport đến chỗ cần trồng
-                                                player.Character:PivotTo(CFrame.new(pos.Position + Vector3.new(0, 3, 0)))
-                                                task.wait(0.25)
+    -- Tìm farm của player
+    local ownerFarm = nil
+    for _, farmInstance in ipairs(farm:GetChildren()) do
+        local ownerData = farmInstance:FindFirstChild("Important") and farmInstance.Important:FindFirstChild("Data") and farmInstance.Important.Data:FindFirstChild("Owner")
+        if ownerData and ownerData.Value == player.Name then
+            ownerFarm = farmInstance
+            break
+        end
+    end
+    if not ownerFarm then
+        warn("Không tìm thấy farm của bạn!")
+        return
+    end
 
-                                                -- Dùng công cụ
-                                                player.Character.Humanoid:EquipTool(tool)
-                                                task.wait(0.15)
+    -- Lấy plantsFolder và plantLocations
+    local plantsFolder = ownerFarm:FindFirstChild("Important") and ownerFarm.Important:FindFirstChild("Plants_Physical")
+    local plantLocations = ownerFarm:FindFirstChild("Important") and ownerFarm.Important:FindFirstChild("Plant_Locations")
 
-                                                -- Bấm chuột hoặc kích hoạt công cụ
-                                                local activate = tool:FindFirstChildOfClass("RemoteEvent")
-                                                if activate then
-                                                    activate:FireServer()
-                                                else
-                                                    tool:Activate()
-                                                end
+    if not plantsFolder or not plantLocations then
+        warn("Không tìm thấy Plants_Physical hoặc Plant_Locations!")
+        return
+    end
 
-                                                task.wait(0.3)
-                                                break
-                                            end
-                                        end
-                                    end
+    -- Dò vị trí đã có cây
+    local occupiedPositions = {}
+    for _, plant in ipairs(plantsFolder:GetChildren()) do
+        local plantPosition = nil
+        if plant:IsA("Model") and plant.PrimaryPart then
+            plantPosition = plant.PrimaryPart.Position
+        elseif plant:IsA("BasePart") then
+            plantPosition = plant.Position
+        else
+            local mainPart = plant:FindFirstChildOfClass("BasePart")
+            if mainPart then
+                plantPosition = mainPart.Position
+            end
+        end
+        if plantPosition then
+            local roundedPos = Vector3.new(math.floor(plantPosition.X), math.floor(plantPosition.Y), math.floor(plantPosition.Z))
+            occupiedPositions[roundedPos] = true
+        end
+    end
+
+    -- Lặp qua các vùng Can_Plant
+    for _, canPlant in ipairs(plantLocations:GetChildren()) do
+        if canPlant:IsA("BasePart") and string.match(canPlant.Name, "Can_Plant") then
+            local center = canPlant.Position
+            local size = canPlant.Size / 2
+
+            local topLeft = center + Vector3.new(-size.X, 0, -size.Z)
+            local topRight = center + Vector3.new(size.X, 0, -size.Z)
+            local bottomLeft = center + Vector3.new(-size.X, 0, size.Z)
+            local bottomRight = center + Vector3.new(size.X, 0, size.Z)
+
+            local spacing = 1
+            local currentPos = topLeft
+
+            while currentPos.Z <= bottomRight.Z do
+                while currentPos.X <= topRight.X do
+                    local roundedCurrentPos = Vector3.new(math.floor(currentPos.X), math.floor(currentPos.Y), math.floor(currentPos.Z))
+
+                    if not occupiedPositions[roundedCurrentPos] then
+                        -- Thử từng seed đã chọn, kiểm tra seed có trong backpack không
+                        for _, seedName in ipairs(selectedSeeds) do
+                            local hasSeed, tool = hasSeedInBackpack(seedName)
+                            if hasSeed then
+                                -- Cầm tool lên tay
+                                if tool.Parent ~= player.Character then
+                                    tool.Parent = player.Character
                                 end
+
+                                -- Đặt cây
+                                plantEvent:FireServer(currentPos, seedName)
+
+                                -- Teleport người chơi lên trên vị trí cây
+                                if player.Character and player.Character.PrimaryPart then
+                                    player.Character:SetPrimaryPartCFrame(CFrame.new(currentPos + Vector3.new(0, 3, 0)))
+                                end
+
+                                task.wait(0.1) -- delay tránh spam quá nhanh
+                                break -- đặt 1 cây / vị trí thôi, không đặt nhiều seed cùng lúc trên 1 vị trí
+                            else
+                                print(("Bạn không có seed %s trong backpack!"):format(seedName))
                             end
                         end
                     end
+
+                    currentPos = currentPos + Vector3.new(spacing, 0, 0)
                 end
+                currentPos = Vector3.new(topLeft.X, currentPos.Y, currentPos.Z + spacing)
             end
         end
-        task.wait(1.0)
+    end
+
+    print("Hoàn tất đặt cây tự động!")
+end
+
+-- Biến lưu trạng thái chạy auto
+local autoPlantRunning = false
+
+autoPlantToggle:OnChanged(function(enabled)
+    autoPlantRunning = enabled
+    if autoPlantRunning then
+        if #selectedSeeds == 0 then
+            warn("Vui lòng chọn ít nhất 1 seed trước khi bật Auto Plant!")
+            autoPlantToggle:Set(false)
+            autoPlantRunning = false
+            return
+        end
+
+        print("Bắt đầu Auto Plant Seed...")
+        -- Tạo task loop để chạy auto plant
+        task.spawn(function()
+            while autoPlantRunning do
+                autoPlantSeeds()
+                task.wait(5) -- chờ 5s rồi làm lại, tránh spam
+            end
+        end)
+    else
+        print("Dừng Auto Plant Seed.")
     end
 end)
+
 
 
 --  -- TAB EVENT 
