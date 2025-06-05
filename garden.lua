@@ -482,7 +482,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
 -- Danh sách tất cả seed trong game
-local allSeeds = {
+local AllSeedNames  = {
     "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop", "Blueberry", "Cacao", "Cactus",
     "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry", "Cherry Blossom", "Chocolate Carrot", "Coconut", "Corn",
     "Cranberry", "Crimson Vine", "Crocus", "Cursed Fruit", "Daffodil", "Dandelion", "Dragon Fruit", "Durian", "Easter Egg",
@@ -497,29 +497,35 @@ local allSeeds = {
 
 
 local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
+
 local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
 local autoPlantEnabled = ConfigSystem.CurrentConfig.AutoPlantEnabled or false
 
-local seedDropdown = PlaySection:AddDropdown("SelectSeedsToPlant", {
+local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
     Title = "Chọn các loại Seed để Auto Plant",
-    Values = AllSeedNames, -- Danh sách bạn đã gửi
+    Values = AllSeedNames,
     Multi = true,
-    Default = selectedSeeds
+    Default = selectedSeedsToPlant
 }):OnChanged(function(values)
-    selectedSeeds = values
-    ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeeds
+    selectedSeedsToPlant = values
+    ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
     print("🌱 Đã chọn các loại seed:")
-    for _, v in ipairs(selectedSeeds) do
+    for _, v in ipairs(selectedSeedsToPlant) do
         print("✅", v)
     end
     ConfigSystem.SaveConfig()
 end)
-toggleObj:OnChanged(function(state)
+
+local toggleObj = PlantSection:AddToggle("AutoPlantToggle", {
+    Title = "Auto Plant Selected Seeds",
+    Default = autoPlantEnabled
+}):OnChanged(function(state)
     autoPlantEnabled = state
     ConfigSystem.CurrentConfig.AutoPlantEnabled = state
     ConfigSystem.SaveConfig()
     print(state and "✅ Auto Plant BẬT" or "⛔ Auto Plant TẮT")
 end)
+
 
 -- Gán lại UI trạng thái cũ (nếu có)
 seedDropdown:SetValue(selectedSeedsToPlant)
