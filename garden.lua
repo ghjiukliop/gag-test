@@ -476,22 +476,9 @@ end)
 -- 🌱 Auto Plant Seed Section trong tab Play
 -- 🌱 Giao diện Auto Plant Seed trong tab Play với lưu cấu hình
 -- Yêu cầu: Fluent UI đã được khởi tạo với biến Window và PlayTab đã có
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
-
--- Danh sách tất cả seed trong game
-local AllSeedNames = {
-    "Apple", "Avocado", "Bamboo", "Banana", "Beanstalk", "Blood Banana", "Blue Lollipop", "Blueberry", "Cacao", "Cactus",
-    "Candy Blossom", "Candy Sunflower", "Carrot", "Celestiberry", "Cherry Blossom", "Chocolate Carrot", "Coconut", "Corn",
-    "Cranberry", "Crimson Vine", "Crocus", "Cursed Fruit", "Daffodil", "Dandelion", "Dragon Fruit", "Durian", "Easter Egg",
-    "Eggplant", "Ember Lily", "Foxglove", "Glowshroom", "Grape", "Hive Fruit", "Lemon", "Lilac", "Lotus", "Mango", "Mega Mushroom",
-    "Mint", "Moon Blossom", "Moon Mango", "Moon Melon", "Moonflower", "Moonglow", "Mushroom", "Nectarine", "Nightshade",
-    "Orange Tulip", "Papaya", "Passionfruit", "Peach", "Pear", "Pepper", "Pineapple", "Pink Lily", "Pink Tulip", "Pumpkin",
-    "Purple Cabbage", "Purple Dahlia", "Raspberry", "Red Lollipop", "Rose", "Soul Fruit", "Starfruit", "Strawberry", "Succulent",
-    "Sunflower", "Super", "Tomato", "Venus Fly Trap", "Watermelon"
-}
 
 -- Kiểm tra PlayTab đã có chưa
 assert(PlayTab, "[AutoPlant] PlayTab chưa được tạo!")
@@ -503,14 +490,47 @@ local PlantSection = PlayTab:AddSection("🌱 Auto Plant Seed")
 local selectedSeedsToPlant = ConfigSystem.CurrentConfig.SelectedSeeds or {}
 local autoPlantEnabled = ConfigSystem.CurrentConfig.AutoPlantEnabled or false
 
--- Tạo Dropdown chọn nhiều Seed
+-- Hàm lấy danh sách seed có trong Backpack
+local function getBackpackSeedList()
+    local seedList = {}
+    local backpack = player:FindFirstChild("Backpack")
+    if backpack then
+        for _, item in ipairs(backpack:GetChildren()) do
+            if item:IsA("Tool") and item:GetAttribute("ITEM_TYPE") == "Seed" then
+                table.insert(seedList, item.Name)
+            end
+        end
+    end
+    return seedList
+end
+
+-- Khởi tạo dropdown với seed hiện có trong backpack
 local seedDropdown = PlantSection:AddDropdown("SelectSeedsToPlant", {
     Title = "Chọn các loại Seed để Auto Plant",
-    Values = AllSeedNames,
+    Values = getBackpackSeedList(),
     Multi = true,
     Default = selectedSeedsToPlant
 })
 
+-- Hàm cập nhật dropdown mỗi khi backpack thay đổi
+local function refreshSeedDropdown()
+    if seedDropdown then
+        local newSeedList = getBackpackSeedList()
+        seedDropdown:SetValues(newSeedList)
+
+        -- Xoá seed đã chọn trước đó nếu không còn trong backpack
+        for i = #selectedSeedsToPlant, 1, -1 do
+            if not table.find(newSeedList, selectedSeedsToPlant[i]) then
+                table.remove(selectedSeedsToPlant, i)
+            end
+        end
+        seedDropdown:SetValue(selectedSeedsToPlant)
+        ConfigSystem.CurrentConfig.SelectedSeeds = selectedSeedsToPlant
+        ConfigSystem.SaveConfig()
+    end
+end
+
+-- Gắn sự kiện khi giá trị dropdown thay đổi
 if seedDropdown then
     seedDropdown:OnChanged(function(values)
         selectedSeedsToPlant = values
@@ -521,16 +541,15 @@ if seedDropdown then
         end
         ConfigSystem.SaveConfig()
     end)
-
-    -- Đặt giá trị dropdown ban đầu nếu có
-    if #selectedSeedsToPlant > 0 then
-        seedDropdown:SetValue(selectedSeedsToPlant)
-    end
 else
     warn("[AutoPlant] Lỗi tạo seedDropdown")
 end
 
--- Tạo toggle bật/tắt Auto Plant
+-- Theo dõi backpack thay đổi và cập nhật dropdown
+player.Backpack.ChildAdded:Connect(refreshSeedDropdown)
+player.Backpack.ChildRemoved:Connect(refreshSeedDropdown)
+
+-- Toggle bật/tắt auto plant
 local toggleObj = PlantSection:AddToggle("AutoPlantToggle", {
     Title = "Auto Plant Selected Seeds",
     Default = autoPlantEnabled
@@ -569,7 +588,6 @@ task.spawn(function()
                 for _, seedName in ipairs(selectedSeedsToPlant) do
                     local tool = backpack:FindFirstChild(seedName)
                     if tool and tool:GetAttribute("ITEM_TYPE") == "Seed" then
-                        -- Cầm seed lên tay
                         tool.Parent = char
                         repeat
                             local pos = getRandomPlantPosition()
