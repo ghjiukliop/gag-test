@@ -472,6 +472,7 @@ task.spawn(function()
 end)
 -- planting
 local PlantSection = PlayTab:AddSection("🌱2 Auto Plant Seed")
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -518,7 +519,7 @@ end)
 
 -- Toggle auto plant
 local autoPlantToggle = PlantSection:AddToggle("AutoPlantSeedToggle", {
-    Text = "Auto Plant Seed",
+    Title = "Auto Plant Seed",
     Enabled = false,
     Tooltip = "Bật/tắt tự động gieo hạt đã chọn"
 })
@@ -667,6 +668,7 @@ autoPlantToggle:OnChanged(function(enabled)
         print("Dừng Auto Plant Seed.")
     end
 end)
+
 
 
 --  -- TAB EVENT 
