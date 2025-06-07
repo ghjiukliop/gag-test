@@ -869,7 +869,7 @@ end)
 -- Các dịch vụ cần thiết
 -- Giả sử biến ShopTab đã có sẵn từ trước
 
-local EggSection = ShopTab:AddSection("Auto Buy Egg")
+local EggSection = ShopTab:AddSection("2Auto Buy Egg")
 
 -- 🥚 Danh sách egg
 local eggList = {
