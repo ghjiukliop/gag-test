@@ -866,7 +866,6 @@ task.spawn(function()
 end)
 -- SHOP SECTION: Mua Pet Egg
 -- 📦 Tab Shop đã tồn tại
-local ShopTab = Window.Tabs.Shop
 local EggSection = ShopTab:AddSection("Auto Buy Egg")
 
 -- 🥚 Danh sách egg khả dụng
