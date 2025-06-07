@@ -867,16 +867,12 @@ end)
 -- SHOP SECTION: Mua Pet Egg
 
 -- Các dịch vụ cần thiết
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- Giả sử biến ShopTab đã có sẵn từ trước
+local EggSection = ShopTab:AddSection("Auto Buy Egg")
 
-local player = Players.LocalPlayer
-local eggEvent = ReplicatedStorage:WaitForChild("GameEvents"):WaitForChild("BuyPetEgg")
+local autoBuyEnabled = ConfigSystem.CurrentConfig.EggAutoBuyEnabled or false
+local selectedEggs = ConfigSystem.CurrentConfig.EggSelectedList or {}
 
-local npcStand = workspace:FindFirstChild("NPCS") and workspace.NPCS:FindFirstChild("Pet Stand")
-local eggSlots = npcStand and npcStand:FindFirstChild("EggLocations")
-
--- Danh sách toàn bộ loại egg có thể chọn
 local allEggs = {
     "Common Egg",
     "Uncommon Egg",
@@ -886,57 +882,43 @@ local allEggs = {
     "Bug Egg",
 }
 
+local eggDropdown = EggSection:AddMultiDropdown("EggSelectDropdown", {
+    Title = "Chọn Egg để Auto Mua",
+    Options = allEggs,
+    Default = selectedEggs,
+})
+:OnChanged(function(selected)
+    selectedEggs = selected or {}
+    ConfigSystem.CurrentConfig.EggSelectedList = selectedEggs
+    ConfigSystem.SaveConfig()
+    print("Đã chọn:", table.concat(selectedEggs, ", "))
+end)
 
--- Tạo section trong tab Shop (nếu chưa có thì tạo)
-local EggSection = ShopTab:FindFirstChild("Auto Buy Egg")
-if not EggSection then
-    EggSection = ShopTab:AddSection("Auto Buy Egg")
-end
+EggSection:AddToggle("EggAutoBuyToggle", {
+    Title = "Bật Auto Buy Egg",
+    Default = autoBuyEnabled,
+})
+:OnChanged(function(state)
+    autoBuyEnabled = state
+    ConfigSystem.CurrentConfig.EggAutoBuyEnabled = state
+    ConfigSystem.SaveConfig()
+    print(state and "🟢 Auto Buy Egg ON" or "🔴 Auto Buy Egg OFF")
+end)
 
--- Biến lưu trạng thái toggle và mảng egg được chọn
-local autoBuyEnabled = ConfigSystem.CurrentConfig.EggAutoBuyEnabled or false
-local selectedEggs = ConfigSystem.CurrentConfig.EggSelectedList or {}
-
--- Tạo dropdown chọn nhiều egg (nếu chưa tồn tại)
-local eggDropdown = EggSection:FindFirstChild("EggSelectDropdown")
-if not eggDropdown then
-    eggDropdown = EggSection:AddMultiDropdown("EggSelectDropdown", {
-        Title = "Chọn Egg để Auto Mua",
-        Options = allEggs,
-        Default = selectedEggs,
-    })
-    :OnChanged(function(selected)
-        selectedEggs = selected or {}
-        ConfigSystem.CurrentConfig.EggSelectedList = selectedEggs
-        ConfigSystem.SaveConfig()
-        print("Đã chọn:", table.concat(selectedEggs, ", "))
-    end)
-end
-
--- Tạo toggle bật/tắt auto buy (nếu chưa tồn tại)
-local eggToggle = EggSection:FindFirstChild("EggAutoBuyToggle")
-if not eggToggle then
-    eggToggle = EggSection:AddToggle("EggAutoBuyToggle", {
-        Title = "Bật Auto Buy Egg",
-        Default = autoBuyEnabled,
-    })
-    :OnChanged(function(state)
-        autoBuyEnabled = state
-        ConfigSystem.CurrentConfig.EggAutoBuyEnabled = state
-        ConfigSystem.SaveConfig()
-        print(state and "🟢 Auto Buy Egg ON" or "🔴 Auto Buy Egg OFF")
-    end)
-end
-
--- Vòng lặp mua egg tự động chạy ngầm
+-- Vòng lặp mua egg tự động
 task.spawn(function()
     while true do
         if autoBuyEnabled and eggEvent and eggSlots and #selectedEggs > 0 then
             for _, slot in ipairs(eggSlots:GetChildren()) do
-                -- Lấy TextLabel tên egg
                 local petInfo = slot:FindFirstChild("PetInfo")
-                local nameLabel = petInfo and petInfo:FindFirstChild("SurfaceGui") and petInfo.SurfaceGui:FindFirstChild("EggNameTextLabel")
-                
+                local nameLabel
+                if petInfo then
+                    local surfaceGui = petInfo:FindFirstChild("SurfaceGui")
+                    if surfaceGui then
+                        nameLabel = surfaceGui:FindFirstChild("EggNameTextLabel")
+                    end
+                end
+
                 if nameLabel and nameLabel:IsA("TextLabel") then
                     local eggName = nameLabel.Text
                     if table.find(selectedEggs, eggName) then
@@ -950,8 +932,6 @@ task.spawn(function()
         task.wait(1)
     end
 end)
-
-
 
 -- Tích hợp với SaveManager
 SaveManager:SetLibrary(Fluent)
