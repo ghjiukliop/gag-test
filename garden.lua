@@ -886,12 +886,6 @@ local allEggs = {
     "Bug Egg",
 }
 
--- Lấy tab Shop đã có sẵn trong UI
-local ShopTab = Window:FindFirstChild("Shop")
-if not ShopTab then
-    warn("[AutoBuyEgg] Không tìm thấy tab Shop!")
-    return
-end
 
 -- Tạo section trong tab Shop (nếu chưa có thì tạo)
 local EggSection = ShopTab:FindFirstChild("Auto Buy Egg")
