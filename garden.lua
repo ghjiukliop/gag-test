@@ -866,9 +866,11 @@ task.spawn(function()
 end)
 -- SHOP SECTION: Mua Pet Egg
 -- 📦 Tab Shop đã tồn tại
+
+
 local EggSection = ShopTab:AddSection("Auto Buy Egg")
 
--- 🥚 Danh sách egg khả dụng
+-- 🥚 Danh sách egg
 local eggList = {
     "Common Egg",
     "Uncommon Egg",
@@ -878,33 +880,42 @@ local eggList = {
     "Bug Egg",
 }
 
--- 🔁 Tải dữ liệu cấu hình
-local savedData = ConfigSystem:LoadConfig()
-local selectedEggs = savedData.EggSelectedList or {}
-local autoBuyEnabled = savedData.EggAutoBuyEnabled or false
+-- 🔁 Biến lưu config runtime
+local selectedEggs = ConfigSystem.CurrentConfig.EggSelectedList or {}
+local autoBuyEnabled = ConfigSystem.CurrentConfig.EggAutoBuyEnabled or false
 
--- 🧩 Dropdown chọn egg
-EggSection:AddDropdown("EggSelectDropdown", {
-    Title = "Chọn Egg để Auto Mua",
-    Values = eggList,
+-- 🧩 UI Dropdown chọn egg
+EggSection:AddDropdown("SelectEggsDropdown", {
+    Title = "Chọn loại Egg",
     Multi = true,
-    Default = selectedEggs,
-}):OnChanged(function(newSelection)
-    selectedEggs = newSelection
+    Values = eggList,
+    Default = (function()
+        local dict = {}
+        for _, v in ipairs(selectedEggs) do
+            dict[v] = true
+        end
+        return dict
+    end)(),
+}):OnChanged(function(dictValues)
+    selectedEggs = {}
+    for eggName, picked in pairs(dictValues) do
+        if picked then
+            table.insert(selectedEggs, eggName)
+        end
+    end
     ConfigSystem.CurrentConfig.EggSelectedList = selectedEggs
-    ConfigSystem:SaveConfig()
-    print("Đã chọn egg:", table.concat(selectedEggs, ", "))
+    ConfigSystem.SaveConfig()
 end)
 
--- 🔘 Toggle bật auto buy
-EggSection:AddToggle("AutoBuyEggToggle", {
+-- 🔘 Toggle bật auto-buy
+EggSection:AddToggle("EggAutoBuyToggle", {
     Title = "Bật Auto Buy Egg",
     Default = autoBuyEnabled,
-}):OnChanged(function(enabled)
-    autoBuyEnabled = enabled
+}):OnChanged(function(state)
+    autoBuyEnabled = state
     ConfigSystem.CurrentConfig.EggAutoBuyEnabled = autoBuyEnabled
-    ConfigSystem:SaveConfig()
-    print(enabled and "🟢 Auto Buy Egg ON" or "🔴 Auto Buy Egg OFF")
+    ConfigSystem.SaveConfig()
+    print(state and "🟢 Auto Buy Egg ON" or "🔴 Auto Buy Egg OFF")
 end)
 
 -- 🔁 Vòng lặp auto mua egg
@@ -914,16 +925,19 @@ local eggEvent = ReplicatedStorage:WaitForChild("GameEvents"):FindFirstChild("Bu
 local npcStand = workspace:FindFirstChild("NPCS") and workspace.NPCS:FindFirstChild("Pet Stand")
 local eggSlots = npcStand and npcStand:FindFirstChild("EggLocations")
 
+-- Auto loop
+local player = game:GetService("Players").LocalPlayer
+
+-- Vòng lặp auto mua egg
 task.spawn(function()
     while true do
         if autoBuyEnabled and eggEvent and eggSlots and #selectedEggs > 0 then
             for _, slot in ipairs(eggSlots:GetChildren()) do
-                local label = slot:FindFirstChild("PetInfo")
-                    and slot.PetInfo:FindFirstChild("SurfaceGui")
-                    and slot.PetInfo.SurfaceGui:FindFirstChild("EggNameTextLabel")
-                
-                if label and label:IsA("TextLabel") then
-                    local eggName = label.Text
+                local nameLabel = slot:FindFirstChild("PetInfo") and slot.PetInfo:FindFirstChild("SurfaceGui")
+                                and slot.PetInfo.SurfaceGui:FindFirstChild("EggNameTextLabel")
+
+                if nameLabel and nameLabel:IsA("TextLabel") then
+                    local eggName = nameLabel.Text
                     if table.find(selectedEggs, eggName) then
                         print("🛒 Mua:", eggName, "tại", slot.Name)
                         eggEvent:FireServer(slot)
@@ -935,7 +949,6 @@ task.spawn(function()
         task.wait(1)
     end
 end)
-
 
 -- Tích hợp với SaveManager
 SaveManager:SetLibrary(Fluent)
