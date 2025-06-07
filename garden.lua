@@ -221,7 +221,7 @@ local EventTab = Window:AddTab({
 
 -- Thêm tab Shop
 local ShopTab = Window:AddTab({
-    Title = "Shop",
+    Title = "2Shop",
     Icon = "rbxassetid://7734068321" -- Bạn có thể đổi icon nếu muốn
 })
 
