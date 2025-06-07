@@ -835,32 +835,6 @@ HoneySection:AddToggle("AutoBuyHoneyItems", {
     })
 end)
 
-local savedData = ConfigSystem:Load()
-local autoBuyEnabled = savedData.AutoBuyEggEnabled or false
-local selectedEggs = savedData.SelectedEggs or {}
-
--- Gán giá trị ban đầu vào UI (nếu dùng Fluent, các hàm Set phải được gọi)
-Options.SelectEggsDropdown:SetValue(selectedEggs)
-Options.EggAutoBuyToggle:SetValue(autoBuyEnabled)
-
--- Cập nhật & lưu khi thay đổi
-Options.SelectEggsDropdown:OnChanged(function(values)
-    selectedEggs = values
-    ConfigSystem:Save({
-        AutoBuyEggEnabled = autoBuyEnabled,
-        SelectedEggs = selectedEggs,
-    })
-    print("Đã chọn:", table.concat(values, ", "))
-end)
-
-Options.EggAutoBuyToggle:OnChanged(function(state)
-    autoBuyEnabled = state
-    ConfigSystem:Save({
-        AutoBuyEggEnabled = autoBuyEnabled,
-        SelectedEggs = selectedEggs,
-    })
-    print(state and "🟢 Auto Buy Egg ON" or "🔴 Auto Buy Egg OFF")
-end)
 
 
 -- Vòng lặp auto mua item
@@ -886,61 +860,72 @@ task.spawn(function()
 end)
 -- SHOP SECTION: Mua Pet Egg
 
-local autoBuyEnabled = false
-local selectedEggs = {}
 
+-- 📦 Tab Shop đã tồn tại
+local ShopTab = Window.Tabs.Shop
 local EggSection = ShopTab:AddSection("Auto Buy Egg")
 
--- Dropdown chọn loại Egg
+-- 🥚 Danh sách egg
+local eggList = {
+    "Common Egg",
+    "Uncommon Egg",
+    "Rare Egg",
+    "Legendary Egg",
+    "Mythical Egg",
+    "Bug Egg",
+}
+
+-- 🔁 Biến lưu config runtime
+local savedData = ConfigSystem:Load()
+local autoBuyEnabled = savedData.AutoBuyEggEnabled or false
+local selectedEggs = savedData.SelectedEggs or {}
+
+-- 🧩 UI Dropdown chọn egg
 EggSection:AddDropdown("SelectEggsDropdown", {
     Title = "Chọn loại Egg",
     Multi = true,
-    Values = {
-        "Common Egg",
-        "Uncommon Egg",
-        "Rare Egg",
-        "Legendary Egg",
-        "Mythical Egg",
-        "Bug Egg"
-    },
-    Default = {}
+    Values = eggList,
+    Default = selectedEggs,
 }):OnChanged(function(values)
     selectedEggs = values
+    ConfigSystem:Save({
+        AutoBuyEggEnabled = autoBuyEnabled,
+        SelectedEggs = selectedEggs,
+    })
     print("Đã chọn:", table.concat(values, ", "))
 end)
 
--- Toggle bật auto buy
+-- 🔘 Toggle bật auto-buy
 EggSection:AddToggle("EggAutoBuyToggle", {
     Title = "Bật Auto Buy Egg",
-    Default = false
+    Default = autoBuyEnabled,
 }):OnChanged(function(state)
     autoBuyEnabled = state
+    ConfigSystem:Save({
+        AutoBuyEggEnabled = autoBuyEnabled,
+        SelectedEggs = selectedEggs,
+    })
     print(state and "🟢 Auto Buy Egg ON" or "🔴 Auto Buy Egg OFF")
 end)
 
--- LOOP kiểm tra và mua egg
+-- 🔁 Vòng lặp auto mua egg
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local eggEvent = ReplicatedStorage:WaitForChild("GameEvents"):FindFirstChild("BuyPetEgg")
+
+local npcStand = workspace:FindFirstChild("NPCS") and workspace.NPCS:FindFirstChild("Pet Stand")
+local eggSlots = npcStand and npcStand:FindFirstChild("EggLocations")
+
 task.spawn(function()
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local eggEvent = ReplicatedStorage:WaitForChild("GameEvents"):FindFirstChild("BuyPetEgg")
-
-    -- Đảm bảo đúng thứ tự theo bạn cung cấp
-    local eggSlots = {
-        workspace.NPCS["Pet Stand"].EggLocations.Location,
-        workspace.NPCS["Pet Stand"].EggLocations:GetChildren()[3],
-        workspace.NPCS["Pet Stand"].EggLocations:GetChildren()[2],
-    }
-
     while true do
-        if autoBuyEnabled and eggEvent and #selectedEggs > 0 then
-            for _, slot in ipairs(eggSlots) do
-                local label = slot:FindFirstChild("PetInfo")
-                    and slot.PetInfo:FindFirstChild("SurfaceGui")
-                    and slot.PetInfo.SurfaceGui:FindFirstChild("EggNameTextLabel")
+        if autoBuyEnabled and eggEvent and eggSlots and #selectedEggs > 0 then
+            for _, slot in ipairs(eggSlots:GetChildren()) do
+                local nameLabel = slot:FindFirstChild("PetInfo") and slot.PetInfo:FindFirstChild("SurfaceGui")
+                               and slot.PetInfo.SurfaceGui:FindFirstChild("EggNameTextLabel")
 
-                if label and label:IsA("TextLabel") then
-                    local eggName = label.Text
+                if nameLabel and nameLabel:IsA("TextLabel") then
+                    local eggName = nameLabel.Text
                     if table.find(selectedEggs, eggName) then
-                        print("🛒 Mua:", eggName, "tại:", slot.Name)
+                        print("🛒 Mua:", eggName, "tại", slot.Name)
                         eggEvent:FireServer(slot)
                         task.wait(0.5)
                     end
