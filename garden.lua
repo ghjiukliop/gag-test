@@ -835,6 +835,34 @@ HoneySection:AddToggle("AutoBuyHoneyItems", {
     })
 end)
 
+local savedData = ConfigSystem:Load()
+local autoBuyEnabled = savedData.AutoBuyEggEnabled or false
+local selectedEggs = savedData.SelectedEggs or {}
+
+-- Gán giá trị ban đầu vào UI (nếu dùng Fluent, các hàm Set phải được gọi)
+Options.SelectEggsDropdown:SetValue(selectedEggs)
+Options.EggAutoBuyToggle:SetValue(autoBuyEnabled)
+
+-- Cập nhật & lưu khi thay đổi
+Options.SelectEggsDropdown:OnChanged(function(values)
+    selectedEggs = values
+    ConfigSystem:Save({
+        AutoBuyEggEnabled = autoBuyEnabled,
+        SelectedEggs = selectedEggs,
+    })
+    print("Đã chọn:", table.concat(values, ", "))
+end)
+
+Options.EggAutoBuyToggle:OnChanged(function(state)
+    autoBuyEnabled = state
+    ConfigSystem:Save({
+        AutoBuyEggEnabled = autoBuyEnabled,
+        SelectedEggs = selectedEggs,
+    })
+    print(state and "🟢 Auto Buy Egg ON" or "🔴 Auto Buy Egg OFF")
+end)
+
+
 -- Vòng lặp auto mua item
 task.spawn(function()
     while true do
@@ -858,56 +886,27 @@ task.spawn(function()
 end)
 -- SHOP SECTION: Mua Pet Egg
 
+local autoBuyEnabled = false
+local selectedEggs = {}
 
+local EggSection = ShopTab:AddSection("Auto Buy Egg")
 
-
-----------------------------------------------------------------
--- 📦 CONSTANTS
-----------------------------------------------------------------
-local EGG_LIST = {
-    "Common Egg",
-    "Uncommon Egg",
-    "Rare Egg",
-    "Legendary Egg",
-    "Mythical Egg",
-    "Bug Egg"
-}
-
-----------------------------------------------------------------
--- 🗂️  GUI: SECTION + DROPDOWN + TOGGLE (trong tab Shop)
-----------------------------------------------------------------
-local EggSection = ShopTab:AddSection("🥚 Auto Buy Egg")
-
--- helper chuyển dict (checkbox dạng {["Rare"]=true}) thành mảng
-local function dictToArray(dict)
-    local arr = {}
-    for k, v in pairs(dict) do
-        if v then table.insert(arr, k) end
-    end
-    return arr
-end
-
-local selectedEggs = {}      -- mảng tên trứng được chọn
-local autoBuyEnabled = false -- trạng thái toggle
-
--- Dropdown multi-select
-local eggDropdown = EggSection:AddDropdown("EggSelect", {
-    Title = "Chọn loại Egg cần mua",
-    Values = EGG_LIST,
+-- Dropdown chọn loại Egg
+EggSection:AddDropdown("SelectEggsDropdown", {
+    Title = "Chọn loại Egg",
     Multi = true,
+    Values = {
+        "Common Egg",
+        "Uncommon Egg",
+        "Rare Egg",
+        "Legendary Egg",
+        "Mythical Egg",
+        "Bug Egg"
+    },
     Default = {}
-})
-
-eggDropdown:OnChanged(function(dictVal)
-    selectedEggs = dictToArray(dictVal)
-    if #selectedEggs > 0 then
-        print("🥚 Đã chọn:")
-        for _, egg in ipairs(selectedEggs) do
-            print("  ✅", egg)
-        end
-    else
-        print("⚠️ Bạn chưa chọn Egg nào.")
-    end
+}):OnChanged(function(values)
+    selectedEggs = values
+    print("Đã chọn:", table.concat(values, ", "))
 end)
 
 -- Toggle bật auto buy
@@ -919,26 +918,29 @@ EggSection:AddToggle("EggAutoBuyToggle", {
     print(state and "🟢 Auto Buy Egg ON" or "🔴 Auto Buy Egg OFF")
 end)
 
-----------------------------------------------------------------
--- 🔁 LOOP MUA EGG
-----------------------------------------------------------------
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local eggEvent = ReplicatedStorage:WaitForChild("GameEvents"):FindFirstChild("BuyPetEgg")
-
-local npcStand = workspace:FindFirstChild("NPCS") and workspace.NPCS:FindFirstChild("Pet Stand")
-local eggSlots = npcStand and npcStand:FindFirstChild("EggLocations")
-
+-- LOOP kiểm tra và mua egg
 task.spawn(function()
-    while true do
-        if autoBuyEnabled and eggEvent and eggSlots and #selectedEggs > 0 then
-            for _, slot in ipairs(eggSlots:GetChildren()) do
-                local nameLabel = slot:FindFirstChild("PetInfo") and slot.PetInfo:FindFirstChild("SurfaceGui")
-                               and slot.PetInfo.SurfaceGui:FindFirstChild("EggNameTextLabel")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local eggEvent = ReplicatedStorage:WaitForChild("GameEvents"):FindFirstChild("BuyPetEgg")
 
-                if nameLabel and nameLabel:IsA("TextLabel") then
-                    local eggName = nameLabel.Text
+    -- Đảm bảo đúng thứ tự theo bạn cung cấp
+    local eggSlots = {
+        workspace.NPCS["Pet Stand"].EggLocations.Location,
+        workspace.NPCS["Pet Stand"].EggLocations:GetChildren()[3],
+        workspace.NPCS["Pet Stand"].EggLocations:GetChildren()[2],
+    }
+
+    while true do
+        if autoBuyEnabled and eggEvent and #selectedEggs > 0 then
+            for _, slot in ipairs(eggSlots) do
+                local label = slot:FindFirstChild("PetInfo")
+                    and slot.PetInfo:FindFirstChild("SurfaceGui")
+                    and slot.PetInfo.SurfaceGui:FindFirstChild("EggNameTextLabel")
+
+                if label and label:IsA("TextLabel") then
+                    local eggName = label.Text
                     if table.find(selectedEggs, eggName) then
-                        print("🛒 Mua:", eggName, "tại", slot.Name)
+                        print("🛒 Mua:", eggName, "tại:", slot.Name)
                         eggEvent:FireServer(slot)
                         task.wait(0.5)
                     end
@@ -948,7 +950,6 @@ task.spawn(function()
         task.wait(1)
     end
 end)
-
 
 
 -- Tích hợp với SaveManager
