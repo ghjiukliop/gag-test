@@ -882,17 +882,32 @@ local allEggs = {
     "Bug Egg",
 }
 
-local eggDropdown = EggSection:AddMultiDropdown("EggSelectDropdown", {
+local EggSection = ShopTab:AddSection("Auto Buy Egg")
+
+local selectedEggsDict = {}
+for _, v in ipairs(ConfigSystem.CurrentConfig.EggSelectedList or {}) do
+    selectedEggsDict[v] = true
+end
+
+local eggDropdown = EggSection:AddDropdown("EggSelectDropdown", {
     Title = "Chọn Egg để Auto Mua",
-    Options = allEggs,
-    Default = selectedEggs,
+    Values = allEggs,
+    Multi = true,
+    Default = selectedEggsDict,
 })
-:OnChanged(function(selected)
-    selectedEggs = selected or {}
+:OnChanged(function(selectedDict)
+    -- Chuyển selectedDict {eggName=true,...} thành mảng
+    local selectedEggs = {}
+    for eggName, selected in pairs(selectedDict) do
+        if selected then
+            table.insert(selectedEggs, eggName)
+        end
+    end
     ConfigSystem.CurrentConfig.EggSelectedList = selectedEggs
     ConfigSystem.SaveConfig()
     print("Đã chọn:", table.concat(selectedEggs, ", "))
 end)
+
 
 EggSection:AddToggle("EggAutoBuyToggle", {
     Title = "Bật Auto Buy Egg",
