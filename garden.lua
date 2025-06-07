@@ -893,65 +893,62 @@ if not ShopTab then
     return
 end
 
--- Tạo section trong tab Shop
-local EggSection = ShopTab:AddSection("Auto Buy Egg")
+-- Tạo section trong tab Shop (nếu chưa có thì tạo)
+local EggSection = ShopTab:FindFirstChild("Auto Buy Egg")
+if not EggSection then
+    EggSection = ShopTab:AddSection("Auto Buy Egg")
+end
 
 -- Biến lưu trạng thái toggle và mảng egg được chọn
-local autoBuyEnabled = false
-local selectedEggs = {}
+local autoBuyEnabled = ConfigSystem.CurrentConfig.EggAutoBuyEnabled or false
+local selectedEggs = ConfigSystem.CurrentConfig.EggSelectedList or {}
 
--- Tạo dropdown chọn nhiều egg
-local eggDropdown = EggSection:AddMultiDropdown("EggSelectDropdown", {
-    Title = "Chọn Egg để Auto Mua",
-    Options = allEggs,
-    Default = ConfigSystem.CurrentConfig.EggSelectedList or {},
-})
-:OnChanged(function(selected)
-    selectedEggs = selected or {}
-    -- Lưu config ngay khi chọn thay đổi
-    ConfigSystem.CurrentConfig.EggSelectedList = selectedEggs
-    ConfigSystem.SaveConfig()
-    print("Đã chọn:", table.concat(selectedEggs, ", "))
-end)
+-- Tạo dropdown chọn nhiều egg (nếu chưa tồn tại)
+local eggDropdown = EggSection:FindFirstChild("EggSelectDropdown")
+if not eggDropdown then
+    eggDropdown = EggSection:AddMultiDropdown("EggSelectDropdown", {
+        Title = "Chọn Egg để Auto Mua",
+        Options = allEggs,
+        Default = selectedEggs,
+    })
+    :OnChanged(function(selected)
+        selectedEggs = selected or {}
+        ConfigSystem.CurrentConfig.EggSelectedList = selectedEggs
+        ConfigSystem.SaveConfig()
+        print("Đã chọn:", table.concat(selectedEggs, ", "))
+    end)
+end
 
--- Tạo toggle bật/tắt auto buy
-EggSection:AddToggle("EggAutoBuyToggle", {
-    Title = "Bật Auto Buy Egg",
-    Default = ConfigSystem.CurrentConfig.EggAutoBuyEnabled or false,
-})
-:OnChanged(function(state)
-    autoBuyEnabled = state
-    ConfigSystem.CurrentConfig.EggAutoBuyEnabled = state
-    ConfigSystem.SaveConfig()
-    print(state and "🟢 Auto Buy Egg ON" or "🔴 Auto Buy Egg OFF")
-end)
+-- Tạo toggle bật/tắt auto buy (nếu chưa tồn tại)
+local eggToggle = EggSection:FindFirstChild("EggAutoBuyToggle")
+if not eggToggle then
+    eggToggle = EggSection:AddToggle("EggAutoBuyToggle", {
+        Title = "Bật Auto Buy Egg",
+        Default = autoBuyEnabled,
+    })
+    :OnChanged(function(state)
+        autoBuyEnabled = state
+        ConfigSystem.CurrentConfig.EggAutoBuyEnabled = state
+        ConfigSystem.SaveConfig()
+        print(state and "🟢 Auto Buy Egg ON" or "🔴 Auto Buy Egg OFF")
+    end)
+end
 
--- Khởi tạo trạng thái từ config khi script load
-autoBuyEnabled = ConfigSystem.CurrentConfig.EggAutoBuyEnabled or false
-selectedEggs = ConfigSystem.CurrentConfig.EggSelectedList or {}
-
--- Vòng lặp mua egg tự động
+-- Vòng lặp mua egg tự động chạy ngầm
 task.spawn(function()
     while true do
         if autoBuyEnabled and eggEvent and eggSlots and #selectedEggs > 0 then
             for _, slot in ipairs(eggSlots:GetChildren()) do
-                -- Cố gắng lấy TextLabel tên egg theo 3 path ưu tiên
-                local nameLabel = nil
+                -- Lấy TextLabel tên egg
                 local petInfo = slot:FindFirstChild("PetInfo")
-                if petInfo then
-                    local surfaceGui = petInfo:FindFirstChild("SurfaceGui")
-                    if surfaceGui then
-                        nameLabel = surfaceGui:FindFirstChild("EggNameTextLabel")
-                    end
-                end
+                local nameLabel = petInfo and petInfo:FindFirstChild("SurfaceGui") and petInfo.SurfaceGui:FindFirstChild("EggNameTextLabel")
                 
                 if nameLabel and nameLabel:IsA("TextLabel") then
                     local eggName = nameLabel.Text
                     if table.find(selectedEggs, eggName) then
                         print("🛒 Mua:", eggName, "tại", slot.Name)
-                        -- Gửi event mua egg với slot làm tham số
                         eggEvent:FireServer(slot)
-                        task.wait(0.5) -- tránh spam quá nhanh
+                        task.wait(0.5)
                     end
                 end
             end
@@ -959,6 +956,7 @@ task.spawn(function()
         task.wait(1)
     end
 end)
+
 
 
 -- Tích hợp với SaveManager
