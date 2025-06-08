@@ -866,19 +866,22 @@ task.spawn(function()
 end)
 -- SHOP SECTION: Mua Pet Egg
 
--- 🥚 Danh sách egg khả dụng
+-- Tạo section "Egg Shop"
+local EggShopSection = Window:AddSection("Egg Shop")
+
 local eggEvent = game:GetService("ReplicatedStorage").GameEvents.BuyPetEgg
 
--- Danh sách egg có thể chọn (tùy bạn muốn mở rộng hay không)
+-- Danh sách egg có thể chọn
 local ALL_EGGS = {
     "Common Egg", "Uncommon Egg", "Rare Egg", "Legendary Egg", "Mythic Egg"
 }
 
+-- Lấy dữ liệu từ config
 local selectedEggs = ConfigSystem.CurrentConfig.EggSelectedList or {}
 local autoBuyEnabled = ConfigSystem.CurrentConfig.EggAutoBuyEnabled or false
 
 -- Dropdown chọn egg để mua
-local eggDropdown = ShopSection:AddDropdown("EggSelector", {
+local eggDropdown = EggShopSection:AddDropdown("EggSelector", {
     Title = "Chọn loại Egg để Auto Mua",
     Values = ALL_EGGS,
     Multi = true,
@@ -899,7 +902,7 @@ eggDropdown:OnChanged(function(dictValues)
 end)
 
 -- Toggle bật auto buy egg
-local eggToggle = ShopSection:AddToggle("AutoBuyEggToggle", {
+local eggToggle = EggShopSection:AddToggle("AutoBuyEggToggle", {
     Title = "Tự động mua Egg",
     Default = autoBuyEnabled
 })
@@ -911,7 +914,7 @@ eggToggle:OnChanged(function(val)
     print(val and "🟢 Auto Buy Egg đã bật" or "🔴 Auto Buy Egg đã tắt")
 end)
 
-
+-- Vị trí egg trong shop
 local eggSlots = {
     workspace.NPCS["Pet Stand"].EggLocations.Location,               -- Slot 1
     workspace.NPCS["Pet Stand"].EggLocations:GetChildren()[3],       -- Slot 2
@@ -920,6 +923,7 @@ local eggSlots = {
 
 local slotNames = { "Slot 1", "Slot 2", "Slot 3" }
 
+-- Vòng lặp mua egg
 task.spawn(function()
     while true do
         if autoBuyEnabled and eggEvent and #selectedEggs > 0 then
@@ -929,6 +933,8 @@ task.spawn(function()
                     and slot.PetInfo.SurfaceGui:FindFirstChild("EggNameTextLabel")
 
                 local eggName = label and label.Text
+                print(("🔍 [%s] Egg hiện tại: %s"):format(slotNames[idx], eggName or "Không tìm thấy label"))
+
                 if eggName and table.find(selectedEggs, eggName) then
                     print(("🛒 Mua %s tại %s (index %d)"):format(eggName, slotNames[idx], idx))
                     eggEvent:FireServer(idx)
@@ -939,7 +945,6 @@ task.spawn(function()
         task.wait(1)
     end
 end)
-
 
 -- Tích hợp với SaveManager
 SaveManager:SetLibrary(Fluent)
