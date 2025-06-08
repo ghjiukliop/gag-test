@@ -873,7 +873,7 @@ local allEggs = { "Common Egg","Uncommon Egg","Rare Egg",
 ----------------------------------------------------------------
 -- ❶  TẠO UI TRONG TAB SHOP  (ShopTab đã tồn tại)
 ----------------------------------------------------------------
-local EggSection = ShopTab:AddSection("Auto Buy Egg")
+local EggSection = ShopTab:AddSection("2Auto Buy Egg")
 
 -- Lấy cấu hình đã lưu
 local selectedEggs   = ConfigSystem.CurrentConfig.EggSelectedList   or {}
