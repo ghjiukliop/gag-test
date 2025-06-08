@@ -908,7 +908,7 @@ EggSection:AddDropdown("SelectEggsDropdown", {
 end)
 
 EggSection:AddToggle("EggAutoBuyToggle", {
-    Title = "Bật Auto Buy Egg",
+    Title = "2Bật Auto Buy Egg",
     Default = autoBuyEnabled,
 }):OnChanged(function(state)
     autoBuyEnabled = state
