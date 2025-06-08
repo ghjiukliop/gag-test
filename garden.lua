@@ -872,7 +872,7 @@ local eggList = { "Common Egg","Uncommon Egg","Rare Egg","Legendary Egg","Mythic
 ----------------------------------------------------------------
 -- ⬇️  UI (dropdown + toggle)
 ----------------------------------------------------------------
-local EggSection = ShopTab:AddSection("Auto Buy Egg")
+local EggSection = ShopTab:AddSection("3Auto Buy Egg")
 
 local selectedEggs = ConfigSystem.CurrentConfig.EggSelectedList or {}
 local autoBuyEnabled = ConfigSystem.CurrentConfig.EggAutoBuyEnabled or false
@@ -908,36 +908,30 @@ end)
 local RS        = game:GetService("ReplicatedStorage")
 local eggEvent  = RS:WaitForChild("GameEvents"):FindFirstChild("BuyPetEgg")
 
+-- Khai báo đúng 3 TextLabel cần quét
 local eggSlots = {
-    workspace.NPCS["Pet Stand"].EggLocations.Location,               -- Slot 1
-    workspace.NPCS["Pet Stand"].EggLocations:GetChildren()[3],       -- Slot 2
-    workspace.NPCS["Pet Stand"].EggLocations:GetChildren()[2],       -- Slot 3
+    workspace.NPCS["Pet Stand"].EggLocations.Location,               -- Slot 1   (index 1)
+    workspace.NPCS["Pet Stand"].EggLocations:GetChildren()[3],       -- Slot 2   (index 2)
+    workspace.NPCS["Pet Stand"].EggLocations:GetChildren()[2],       -- Slot 3   (index 3)
 }
 
-local slotNames = { "Slot 1","Slot 2","Slot 3" }
+local slotNames = { "Slot 1", "Slot 2", "Slot 3" }
 
 task.spawn(function()
     while true do
         if autoBuyEnabled and eggEvent and #selectedEggs > 0 then
-            print("📋 Danh sách egg đang hiển thị & hành động:")
-            -- in danh sách chọn
-            print("  🌟 Egg bạn đã chọn:", table.concat(selectedEggs,", "))
-
-            for i, slot in ipairs(eggSlots) do
+            for idx, slot in ipairs(eggSlots) do
                 local label = slot:FindFirstChild("PetInfo")
-                          and slot.PetInfo:FindFirstChild("SurfaceGui")
-                          and slot.PetInfo.SurfaceGui:FindFirstChild("EggNameTextLabel")
+                    and slot.PetInfo:FindFirstChild("SurfaceGui")
+                    and slot.PetInfo.SurfaceGui:FindFirstChild("EggNameTextLabel")
 
-                local eggName = label and label.Text or "Không tìm thấy"
-                print(("  %s: %s"):format(slotNames[i], eggName))
-
-                if table.find(selectedEggs, eggName) then
-                    print("    ➜ Trùng khớp, tiến hành mua...")
-                    eggEvent:FireServer(slot)
+                local eggName = label and label.Text
+                if eggName and table.find(selectedEggs, eggName) then
+                    print(("🛒 Mua %s tại %s (index %d)"):format(eggName, slotNames[idx], idx))
+                    eggEvent:FireServer(idx)        -- ⚠️ Gửi chỉ số 1/2/3, không phải slot
                     task.wait(0.5)
                 end
             end
-            print("----------------------------")
         end
         task.wait(1)
     end
