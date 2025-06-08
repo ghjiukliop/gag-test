@@ -867,16 +867,15 @@ end)
 -- SHOP SECTION: Mua Pet Egg
 
 -- Tạo section "Egg Shop"
-local EggShopSection = Window:AddSection("Egg Shop")
+
+local EggShopSection = ShopTab:AddSection("Egg Shop")
 
 local eggEvent = game:GetService("ReplicatedStorage").GameEvents.BuyPetEgg
 
--- Danh sách egg có thể chọn
 local ALL_EGGS = {
     "Common Egg", "Uncommon Egg", "Rare Egg", "Legendary Egg", "Mythic Egg"
 }
 
--- Lấy dữ liệu từ config
 local selectedEggs = ConfigSystem.CurrentConfig.EggSelectedList or {}
 local autoBuyEnabled = ConfigSystem.CurrentConfig.EggAutoBuyEnabled or false
 
@@ -914,7 +913,7 @@ eggToggle:OnChanged(function(val)
     print(val and "🟢 Auto Buy Egg đã bật" or "🔴 Auto Buy Egg đã tắt")
 end)
 
--- Vị trí egg trong shop
+-- Danh sách vị trí egg trong shop
 local eggSlots = {
     workspace.NPCS["Pet Stand"].EggLocations.Location,               -- Slot 1
     workspace.NPCS["Pet Stand"].EggLocations:GetChildren()[3],       -- Slot 2
@@ -923,7 +922,7 @@ local eggSlots = {
 
 local slotNames = { "Slot 1", "Slot 2", "Slot 3" }
 
--- Vòng lặp mua egg
+-- Vòng lặp auto buy egg
 task.spawn(function()
     while true do
         if autoBuyEnabled and eggEvent and #selectedEggs > 0 then
@@ -945,7 +944,6 @@ task.spawn(function()
         task.wait(1)
     end
 end)
-
 -- Tích hợp với SaveManager
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
