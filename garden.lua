@@ -739,21 +739,25 @@ HoneySection:AddToggle("AutoCollectPollinated", {
         Duration = 4
     })
 end)
+
 -- Giả sử bạn đã có:
-local collectAndUsePollinated = false
+local collectAndUsePollinated = ConfigSystem.CurrentConfig.CollectAndUsePollinatedEnabled or false
 
 HoneySection:AddToggle("CollectAndUsePollinated", {
     Title = "Auto Use Pollinated Fruit",
-    Default = false,
+    Default = collectAndUsePollinated,
     Tooltip = "Tự động cầm fruit có Pollinated và sử dụng máy liên tục",
 }):OnChanged(function(state)
     collectAndUsePollinated = state
+    ConfigSystem.CurrentConfig.CollectAndUsePollinatedEnabled = state
+    ConfigSystem.SaveConfig()
     Fluent:Notify({
         Title = "Honey Event",
         Content = state and "🟢 Đang tự động sử dụng fruit có 'Pollinated'" or "🔴 Đã dừng sử dụng",
         Duration = 4
     })
 end)
+
 
 task.spawn(function()
     local Players = game:GetService("Players")
@@ -810,22 +814,7 @@ task.spawn(function()
     end
 end)
 
-local collectAndUsePollinated = ConfigSystem.CurrentConfig.CollectAndUsePollinatedEnabled or false
 
-HoneySection:AddToggle("CollectAndUsePollinated", {
-    Title = "Auto Use Pollinated Fruit",
-    Default = collectAndUsePollinated,
-    Tooltip = "Tự động cầm fruit có Pollinated và sử dụng máy liên tục",
-}):OnChanged(function(state)
-    collectAndUsePollinated = state
-    ConfigSystem.CurrentConfig.CollectAndUsePollinatedEnabled = state
-    ConfigSystem.SaveConfig()
-    Fluent:Notify({
-        Title = "Honey Event",
-        Content = state and "🟢 Đang tự động sử dụng fruit có 'Pollinated'" or "🔴 Đã dừng sử dụng",
-        Duration = 4
-    })
-end)
 
 
 
@@ -838,40 +827,43 @@ local honeyItemsList = {
 }
 
 -- Lưu item đã chọn
-local selectedHoneyItems = {}
 
--- Dropdown chọn item cần mua
+local selectedHoneyItems = ConfigSystem.CurrentConfig.HoneySelectedItems or {}
+
 HoneySection:AddDropdown("HoneyItemDropdown", {
-    Title = "🛒 Chọn item muốn auto mua",
+    Title  = "🛒 Chọn item muốn auto mua",
     Values = honeyItemsList,
-    Multi = true,
-    Default = {},
-    Callback = function(selected)
-        selectedHoneyItems = {}  -- Reset danh sách
-        for itemName, isSelected in pairs(selected) do
-            if isSelected then
-                table.insert(selectedHoneyItems, itemName)
-            end
-        end
-
-        if #selectedHoneyItems == 0 then
-            print("🔴 Bạn chưa chọn item nào.")
-        else
-            print("✅ Item đã chọn:", table.concat(selectedHoneyItems, ", "))
-        end
+    Multi  = true,
+    Default = (function()
+        local dict = {}; for _,v in ipairs(selectedHoneyItems) do dict[v]=true end; return dict
+    end)(),
+}):OnChanged(function(dict)
+    selectedHoneyItems = {}
+    for item, picked in pairs(dict) do
+        if picked then table.insert(selectedHoneyItems, item) end
     end
-})
+    ConfigSystem.CurrentConfig.HoneySelectedItems = selectedHoneyItems
+    ConfigSystem.SaveConfig()
+
+    if #selectedHoneyItems == 0 then
+        print("🔴 Bạn chưa chọn item nào.")
+    else
+        print("✅ Item đã chọn:", table.concat(selectedHoneyItems,", "))
+    end
+end)
 
 -- Biến bật/tắt Auto Buy
-local autoBuyEnabled = false
+
+local autoBuyEnabled = ConfigSystem.CurrentConfig.HoneyAutoBuyEnabled or false
 
 HoneySection:AddToggle("AutoBuyHoneyItems", {
-    Title = "⚡ Auto Buy Honey Items",
-    Default = false,
+    Title   = "⚡ Auto Buy Honey Items",
+    Default = autoBuyEnabled,
     Tooltip = "Tự động mua các item đã chọn",
 }):OnChanged(function(state)
     autoBuyEnabled = state
-
+    ConfigSystem.CurrentConfig.HoneyAutoBuyEnabled = state
+    ConfigSystem.SaveConfig()
     Fluent:Notify({
         Title = "Honey Event",
         Content = state and "🟢 Đang tự động mua item" or "🔴 Đã dừng auto buy",
@@ -903,22 +895,6 @@ task.spawn(function()
     end
 end)
 
-local autoBuyEnabled = ConfigSystem.CurrentConfig.HoneyAutoBuyEnabled or false
-
-HoneySection:AddToggle("AutoBuyHoneyItems", {
-    Title   = "⚡ Auto Buy Honey Items",
-    Default = autoBuyEnabled,
-    Tooltip = "Tự động mua các item đã chọn",
-}):OnChanged(function(state)
-    autoBuyEnabled = state
-    ConfigSystem.CurrentConfig.HoneyAutoBuyEnabled = state
-    ConfigSystem.SaveConfig()
-    Fluent:Notify({
-        Title = "Honey Event",
-        Content = state and "🟢 Đang tự động mua item" or "🔴 Đã dừng auto buy",
-        Duration = 4
-    })
-end)
 
 -- SHOP SECTION: Mua Pet Egg
 
