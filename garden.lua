@@ -95,6 +95,10 @@ ConfigSystem.DefaultConfig = {
     LogsEnabled = true,
     WarningsEnabled = true,
     
+    -- Cài đặt cho Auto Buy Gear
+    GearAutoBuyEnabled = false,
+    GearSelectedList = {}, -- Mảng các gear đã chọn
+
     -- Cài đặt cho Auto Buy Egg
     EggAutoBuyEnabled = false,
     EggSelectedList = {}, -- Mảng các egg đã chọn để auto mua
