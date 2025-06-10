@@ -94,13 +94,7 @@ ConfigSystem.DefaultConfig = {
     -- Cài đặt log
     LogsEnabled = true,
     WarningsEnabled = true,
-            -- Honey Event settings
-
-CollectPollinatedEnabled      = false,
-CollectAndUsePollinatedEnabled = false,
-HoneyAutoBuyEnabled           = false,
-HoneySelectedItems            = {},  
-
+    
     -- Cài đặt cho Auto Buy Egg
     EggAutoBuyEnabled = false,
     EggSelectedList = {}, -- Mảng các egg đã chọn để auto mua
@@ -661,37 +655,32 @@ end)
 
 -- Giả sử bạn đã có EventTab rồi:
 -- Đảm bảo EventTab đã được tạo trước đó như bạn viết
--- SECTION: UI setup
+
+-- Tạo section bên trong EventTab
 local HoneySection = EventTab:AddSection("🍯8 Honey Event")
 
--- Load config values
-local collectPollinated = ConfigSystem.CurrentConfig.CollectPollinatedEnabled or false
-local collectAndUsePollinated = ConfigSystem.CurrentConfig.CollectAndUsePollinatedEnabled or false
-local autoBuyEnabled = ConfigSystem.CurrentConfig.HoneyAutoBuyEnabled or false
-local selectedHoneyItems = ConfigSystem.CurrentConfig.HoneySelectedItems or {}
-
--- Toggle: Auto Collect Pollinated Fruit
+-- Biến bật/tắt thu thập
+local collectPollinated = false
 HoneySection:AddToggle("AutoCollectPollinated", {
 	Title = "Auto Collect Pollinated Fruit",
-	Default = collectPollinated,
+	Default = false,
 	Tooltip = "Chỉ thu thập các loại fruit có thuộc tính Pollinated",
 }):OnChanged(function(state)
 	collectPollinated = state
-	ConfigSystem.CurrentConfig.CollectPollinatedEnabled = state
-	ConfigSystem.SaveConfig()
 	Fluent:Notify({
 		Title = "Honey Event",
-		Content = state and "🟢 Đang thu thập fruit Pollinated" or "🔴 Đã tắt thu thập",
+		Content = state and "🟢 Đang tự động thu thập fruit có 'Pollinated'" or "🔴 Đã dừng thu thập",
 		Duration = 4
 	})
 end)
 
--- Loop Auto Collect
+-- Vòng lặp tự động tìm và thu thập fruit có Pollinated
 task.spawn(function()
 	while true do
 		if collectPollinated then
 			local player = game:GetService("Players").LocalPlayer
 			local farms = workspace:FindFirstChild("Farm")
+
 			if farms and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
 				for _, farm in ipairs(farms:GetChildren()) do
 					local owner = farm:FindFirstChild("Important") and farm.Important:FindFirstChild("Data") and farm.Important.Data:FindFirstChild("Owner")
@@ -704,11 +693,19 @@ task.spawn(function()
 									for _, fruit in ipairs(fruits:GetChildren()) do
 										if fruit:GetAttribute("Pollinated") == true then
 											local fruitPos = fruit:FindFirstChild("PrimaryPart") or fruit:FindFirstChild("Main") or fruit:FindFirstChildWhichIsA("BasePart")
-											if fruitPos then player.Character:MoveTo(fruitPos.Position) task.wait(0.2) end
+											if fruitPos then
+												player.Character:MoveTo(fruitPos.Position)
+												task.wait(0.2)
+											end
+
 											local prompt = fruit:FindFirstChildWhichIsA("ProximityPrompt", true)
-											if prompt then fireproximityprompt(prompt)
-											else local click = fruit:FindFirstChildWhichIsA("ClickDetector", true)
-												if click then fireclickdetector(click) end
+											if prompt then
+												fireproximityprompt(prompt)
+											else
+												local click = fruit:FindFirstChildWhichIsA("ClickDetector", true)
+												if click then
+													fireclickdetector(click)
+												end
 											end
 										end
 									end
@@ -723,23 +720,22 @@ task.spawn(function()
 	end
 end)
 
--- Toggle: Auto Use Pollinated Fruit
+-- Giả sử bạn đã có:
+local collectAndUsePollinated = false
+
 HoneySection:AddToggle("CollectAndUsePollinated", {
     Title = "Auto Use Pollinated Fruit",
-    Default = collectAndUsePollinated,
+    Default = false,
     Tooltip = "Tự động cầm fruit có Pollinated và sử dụng máy liên tục",
 }):OnChanged(function(state)
     collectAndUsePollinated = state
-    ConfigSystem.CurrentConfig.CollectAndUsePollinatedEnabled = state
-    ConfigSystem.SaveConfig()
     Fluent:Notify({
         Title = "Honey Event",
-        Content = state and "🟢 Sử dụng fruit Pollinated" or "🔴 Đã dừng sử dụng",
+        Content = state and "🟢 Đang tự động sử dụng fruit có 'Pollinated'" or "🔴 Đã dừng sử dụng",
         Duration = 4
     })
 end)
 
--- Loop Auto Use
 task.spawn(function()
     local Players = game:GetService("Players")
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -772,17 +768,21 @@ task.spawn(function()
                 local itemName = foundItem.Name
                 local character = myPlayer.Character
                 if character then
+                    -- Cầm item lên
                     foundItem.Parent = character
                     print("👐 Đã cầm fruit:", itemName)
+
+                    -- Liên tục sử dụng cho tới khi fruit biến mất khỏi tay
                     while isItemStillHeld(itemName) and collectAndUsePollinated do
                         honeyMachineEvent:FireServer("MachineInteract")
-                        print("⚙️ Đã gửi MachineInteract:", itemName)
-                        task.wait(1.5)
+                        print("⚙️ Đã gửi MachineInteract cho", itemName)
+                        task.wait(1.5)  -- Chờ 1.5 giây giữa các lần sử dụng
                     end
-                    print("✅ Fruit đã sử dụng xong:", itemName)
+
+                    print("✅ Fruit đã được sử dụng hết hoặc bị biến mất:", itemName)
                 end
             else
-                print("🔍 Không còn fruit 'Pollinated' trong backpack.")
+                print("🔍 Không còn fruit có 'Pollinated' trong Backpack, đợi 5 giây...")
                 task.wait(5)
             end
         else
@@ -791,73 +791,167 @@ task.spawn(function()
     end
 end)
 
--- Danh sách item auto mua
+
+-- Danh sách item cần mua
 local honeyItemsList = {
-    "Flower Seed Pack", "Lavender", "Nectarshade", "Nectarine", "Hive Fruit", "Honey Sprinkler",
-    "Bee Egg", "Bee Crate", "Honey Comb", "Bee Chair", "Honey Torch", "Honey Walkway"
+    "Flower Seed Pack", "Lavender","Nectarshade", "Nectarine", "Hive Fruit", "Honey Sprinkler",
+    "Bee Egg", "Bee Crate", "Honey Comb", "Bee Chair",
+    "Honey Torch", "Honey Walkway"
 }
 
--- Dropdown chọn item mua
+-- Lưu item đã chọn
+local selectedHoneyItems = {}
+
+-- Dropdown chọn item cần mua
 HoneySection:AddDropdown("HoneyItemDropdown", {
     Title = "🛒 Chọn item muốn auto mua",
     Values = honeyItemsList,
     Multi = true,
-    Default = (function()
-        local dict = {}; for _,v in ipairs(selectedHoneyItems) do dict[v] = true end; return dict
-    end)(),
-}):OnChanged(function(selected)
-    selectedHoneyItems = {}
-    for itemName, isSelected in pairs(selected) do
-        if isSelected then
-            table.insert(selectedHoneyItems, itemName)
+    Default = {},
+    Callback = function(selected)
+        selectedHoneyItems = {}  -- Reset danh sách
+        for itemName, isSelected in pairs(selected) do
+            if isSelected then
+                table.insert(selectedHoneyItems, itemName)
+            end
+        end
+
+        if #selectedHoneyItems == 0 then
+            print("🔴 Bạn chưa chọn item nào.")
+        else
+            print("✅ Item đã chọn:", table.concat(selectedHoneyItems, ", "))
         end
     end
-    ConfigSystem.CurrentConfig.HoneySelectedItems = selectedHoneyItems
-    ConfigSystem.SaveConfig()
-    if #selectedHoneyItems == 0 then
-        print("🔴 Chưa chọn item.")
-    else
-        print("✅ Đã chọn:", table.concat(selectedHoneyItems, ", "))
-    end
-end)
+})
 
--- Toggle Auto Buy
+-- Biến bật/tắt Auto Buy
+local autoBuyEnabled = false
+
 HoneySection:AddToggle("AutoBuyHoneyItems", {
     Title = "⚡ Auto Buy Honey Items",
-    Default = autoBuyEnabled,
+    Default = false,
     Tooltip = "Tự động mua các item đã chọn",
 }):OnChanged(function(state)
     autoBuyEnabled = state
-    ConfigSystem.CurrentConfig.HoneyAutoBuyEnabled = state
-    ConfigSystem.SaveConfig()
+
     Fluent:Notify({
         Title = "Honey Event",
-        Content = state and "🟢 Đang auto buy" or "🔴 Dừng auto buy",
+        Content = state and "🟢 Đang tự động mua item" or "🔴 Đã dừng auto buy",
         Duration = 4
     })
 end)
 
--- Loop auto mua item
+
+
+-- Vòng lặp auto mua item
 task.spawn(function()
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
     while true do
         if autoBuyEnabled then
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
             local buyEvent = ReplicatedStorage:FindFirstChild("GameEvents") and ReplicatedStorage.GameEvents:FindFirstChild("BuyEventShopStock")
+
             if buyEvent then
                 for _, itemName in ipairs(selectedHoneyItems) do
-                    buyEvent:FireServer(itemName)
+                    local args = { [1] = itemName }
+                    buyEvent:FireServer(unpack(args))
                     print("🛒 Đã mua:", itemName)
-                    task.wait(0.5)
+                    task.wait(0.5) -- Chờ giữa các lần mua để tránh spam
                 end
             else
-                warn("❌ Không tìm thấy sự kiện mua.")
+                warn("❌ Không tìm thấy sự kiện mua hàng!")
+            end
+        end
+        task.wait(1) -- Lặp kiểm tra mỗi giây
+    end
+end)
+
+
+-- GEEAR SHOP 
+
+-- ⚙️ GEAR SHOP SECTION
+local GearShopSection = ShopTab:AddSection("Gear Shop")
+
+-- 🎒 Danh sách Gear có thể mua
+local gearList = {
+    "Basic Sprinkler",
+    "Advanced Sprinkler",
+    "Master Sprinkler",
+    "Trowel",
+    "Friendship Pot",
+    "Harvest Tool",
+    "Favorite Tool",
+    "Recall Wrench",
+    "Watering Can"
+}
+
+-- 📦 Biến lưu item được chọn
+local selectedGears = ConfigSystem.CurrentConfig.GearSelectedList or {}
+local autoBuyGearEnabled = ConfigSystem.CurrentConfig.GearAutoBuyEnabled or false
+
+-- 🔽 Dropdown chọn gear
+local gearDropdown = GearShopSection:AddDropdown("GearSelector", {
+    Title = "🛒 Chọn gear để auto mua",
+    Values = gearList,
+    Multi = true,
+    Default = (function()
+        local dict = {}
+        for _, v in ipairs(selectedGears) do dict[v] = true end
+        return dict
+    end)()
+})
+
+gearDropdown:OnChanged(function(dict)
+    selectedGears = {}
+    for name, picked in pairs(dict) do
+        if picked then table.insert(selectedGears, name) end
+    end
+    ConfigSystem.CurrentConfig.GearSelectedList = selectedGears
+    ConfigSystem.SaveConfig()
+
+    if #selectedGears == 0 then
+        print("🔴 Chưa chọn gear nào.")
+    else
+        print("✅ Gear đã chọn:", table.concat(selectedGears, ", "))
+    end
+end)
+
+-- 🔘 Toggle bật auto mua gear
+GearShopSection:AddToggle("AutoBuyGearToggle", {
+    Title = "⚡ Auto Buy Gear",
+    Default = autoBuyGearEnabled,
+    Tooltip = "Tự động mua các gear đã chọn"
+}):OnChanged(function(val)
+    autoBuyGearEnabled = val
+    ConfigSystem.CurrentConfig.GearAutoBuyEnabled = val
+    ConfigSystem.SaveConfig()
+
+    Fluent:Notify({
+        Title = "Gear AutoBuy",
+        Content = val and "🟢 Đang tự động mua gear" or "🔴 Đã tắt auto buy",
+        Duration = 4
+    })
+end)
+
+-- 🔁 Vòng lặp auto mua gear
+task.spawn(function()
+    while true do
+        if autoBuyGearEnabled and #selectedGears > 0 then
+            local ReplicatedStorage = game:GetService("ReplicatedStorage")
+            local gearEvent = ReplicatedStorage:FindFirstChild("GameEvents") and ReplicatedStorage.GameEvents:FindFirstChild("BuyGearStock")
+
+            if gearEvent then
+                for _, gearName in ipairs(selectedGears) do
+                    gearEvent:FireServer(gearName)
+                    print("🛒 Đã mua:", gearName)
+                    task.wait(0.5) -- tránh spam
+                end
+            else
+                warn("❌ Không tìm thấy sự kiện BuyGearStock")
             end
         end
         task.wait(1)
     end
 end)
-
-
 
 -- SHOP SECTION: Mua Pet Egg
 
@@ -868,7 +962,7 @@ local EggShopSection = ShopTab:AddSection("Egg Shop")
 local eggEvent = game:GetService("ReplicatedStorage").GameEvents.BuyPetEgg
 
 local ALL_EGGS = {
-    "Common Egg", "Uncommon Egg", "Rare Egg", "Legendary Egg", "Mythic Egg"
+    "Common Egg", "Uncommon Egg", "Rare Egg", "Legendary Egg", "Bug Egg", "Mythic Egg"
 }
 
 local selectedEggs = ConfigSystem.CurrentConfig.EggSelectedList or {}
@@ -939,6 +1033,8 @@ task.spawn(function()
         task.wait(1)
     end
 end)
+
+--end
 -- Tích hợp với SaveManager
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
