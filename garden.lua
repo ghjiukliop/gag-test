@@ -885,7 +885,7 @@ local seedList = {
     "Carrot", "Strawberry", "Blueberry", "Orange Tulip", "Tomato", "Daffodil",
     "Corn", "Watermelon", "Pumpkin", "Apple", "Bamboo", "Coconut",
     "Cactus", "Dragon Fruit", "Mango", "Mushroom", "Grape", "Pepper",
-    "Cacao", "Beanstalk", "Ember Lily"
+    "Cacao", "Beanstalk", "Ember Lily","Sugar Apple"
 }
 
 -- 3️⃣  Biến lưu & load từ ConfigSystem
@@ -963,6 +963,7 @@ local GearShopSection = ShopTab:AddSection("Gear Shop")
 local gearList = {
     "Basic Sprinkler",
     "Advanced Sprinkler",
+    "Godly Sprinkler",
     "Master Sprinkler",
     "Trowel",
     "Friendship Pot",
