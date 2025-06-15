@@ -874,6 +874,7 @@ end)
 
 -- Seed crafting event 
 -- 📦 Auto Craft System for SeedEventWorkbench
+-- 📦 Auto Craft System for SeedEventWorkbench
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -916,7 +917,7 @@ SeedCraftingSection:AddDropdown("CraftItemSelector", {
 }):OnChanged(function(v)
     selectedItem = v
     ConfigSystem.CurrentConfig.AutoCraftSeedItem = v
-    ConfigSystem.SaveConfig()
+    ConfigSystem.PendingSave = true
 end)
 
 -- 🔘 Toggle bật/tắt Auto Craft
@@ -928,7 +929,7 @@ SeedCraftingSection:AddToggle("AutoCraftToggle", {
 }):OnChanged(function(val)
     autoCraftEnabled = val
     ConfigSystem.CurrentConfig.AutoCraftSeedEnabled = val
-    ConfigSystem.SaveConfig()
+    ConfigSystem.PendingSave = true
     print(val and ("🟢 Đã bật Auto Craft: " .. selectedItem) or "🔴 Đã tắt Auto Craft")
 end)
 
@@ -1013,6 +1014,17 @@ RunService.Heartbeat:Connect(function()
         craftItem(selectedItem)
     end
 end)
+
+-- 🧷 Tự động lưu nếu PendingSave
+task.spawn(function()
+    while true do
+        task.wait(5)
+        if ConfigSystem.PendingSave then
+            ConfigSystem.SaveConfig()
+        end
+    end
+end)
+
 --end
 -- SEED SHOP 
 -- =========================
