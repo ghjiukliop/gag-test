@@ -97,7 +97,9 @@ ConfigSystem.DefaultConfig = {
     -- Cài đặt cho Auto Buy Seed
     SeedAutoBuyEnabled = false,
     SeedSelectedList   = {},
-
+  -- Cài đặt cho Auto Craft Seed
+    AutoCraftSeedEnabled = false,
+    AutoCraftSeedItem = "Suncoil",
     -- Cài đặt cho Auto Buy Gear
     GearAutoBuyEnabled = false,
     GearSelectedList = {}, -- Mảng các gear đã chọn
@@ -873,43 +875,18 @@ task.spawn(function()
 end)
 
 -- Seed crafting event 
--- 📦 Auto Craft System for SeedEventWorkbench
--- 📦 Auto Craft System for SeedEventWorkbench
-
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local player = Players.LocalPlayer
-local backpack = player:WaitForChild("Backpack")
-
-local CraftingRemote = ReplicatedStorage.GameEvents:WaitForChild("CraftingGlobalObjectService")
-local Workbench = workspace.Interaction.UpdateItems.NewCrafting:WaitForChild("SeedEventCraftingWorkBench")
-local WorkbenchID = "SeedEventWorkbench"
-
--- 📁 ConfigSystem hỗ trợ lưu cấu hình auto craft
-local ConfigSystem = _G.ConfigSystem
-ConfigSystem.DefaultConfig.AutoCraftSeedEnabled = false
-ConfigSystem.DefaultConfig.AutoCraftSeedItem = "Suncoil"
-ConfigSystem.CurrentConfig.AutoCraftSeedEnabled = ConfigSystem.CurrentConfig.AutoCraftSeedEnabled or false
-ConfigSystem.CurrentConfig.AutoCraftSeedItem = ConfigSystem.CurrentConfig.AutoCraftSeedItem or "Suncoil"
-
--- 🔧 Danh sách craftable items
-local CraftableItems = {
-    "Crafters Seed Pack",
-    "Manuka Flower",
-    "Dandelion",
-    "Lumira",
-    "Honeysuckle",
-    "Bee Balm",
-    "Nectar Thorn",
-    "Suncoil",
-}
-
 -- 🌱 Tạo giao diện Seed Crafting trong EventTab
 local SeedCraftingSection = EventTab:AddSection("🌾 Seed Crafting")
 
--- 🔽 Dropdown chọn item để craft
+local CraftableItems = {
+    "Crafters Seed Pack", "Manuka Flower", "Dandelion", "Lumira",
+    "Honeysuckle", "Bee Balm", "Nectar Thorn", "Suncoil"
+}
+
 local selectedItem = ConfigSystem.CurrentConfig.AutoCraftSeedItem
+local autoCraftEnabled = ConfigSystem.CurrentConfig.AutoCraftSeedEnabled
+
+-- 🔽 Dropdown chọn item để craft
 SeedCraftingSection:AddDropdown("CraftItemSelector", {
     Title = "Chọn item cần craft",
     Values = CraftableItems,
@@ -917,11 +894,10 @@ SeedCraftingSection:AddDropdown("CraftItemSelector", {
 }):OnChanged(function(v)
     selectedItem = v
     ConfigSystem.CurrentConfig.AutoCraftSeedItem = v
-    ConfigSystem.PendingSave = true
+    ConfigSystem.SaveConfig()
 end)
 
 -- 🔘 Toggle bật/tắt Auto Craft
-local autoCraftEnabled = ConfigSystem.CurrentConfig.AutoCraftSeedEnabled
 SeedCraftingSection:AddToggle("AutoCraftToggle", {
     Title = "Tự động craft item",
     Default = autoCraftEnabled,
@@ -929,101 +905,10 @@ SeedCraftingSection:AddToggle("AutoCraftToggle", {
 }):OnChanged(function(val)
     autoCraftEnabled = val
     ConfigSystem.CurrentConfig.AutoCraftSeedEnabled = val
-    ConfigSystem.PendingSave = true
+    ConfigSystem.SaveConfig()
     print(val and ("🟢 Đã bật Auto Craft: " .. selectedItem) or "🔴 Đã tắt Auto Craft")
 end)
 
--- 🔎 Tìm tool trong backpack theo tên
-local function findToolByName(name)
-    for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and tool.Name == name then
-            return tool
-        end
-    end
-    return nil
-end
-
--- 🧠 Thực hiện craft item
-local function craftItem(itemName)
-    local Recipes = {
-        ["Crafters Seed Pack"] = {"Flower Seed Pack"},
-        ["Manuka Flower"] = {"Daffodil Seed", "Orange Tulip Seed"},
-        ["Dandelion"] = {"Bamboo", "Bamboo", "Manuka Flower Seed"},
-        ["Lumira"] = {"Pumpkin", "Pumpkin", "Dandelion Seed", "Flower Seed Pack"},
-        ["Honeysuckle"] = {"Pink Lily Seed", "Purple Dahlia Seed"},
-        ["Bee Balm"] = {"Crocus", "Lavender"},
-        ["Nectar Thorn"] = {"Cactus", "Cactus", "Cactus Seed", "Nectarshade Seed"},
-        ["Suncoil"] = {"Crocus", "Daffodil", "Dandelion", "Pink Lily"},
-    }
-
-    local recipe = Recipes[itemName]
-    if not recipe then
-        warn("Không tìm thấy công thức cho:", itemName)
-        return
-    end
-
-    -- B1: SetRecipe
-    CraftingRemote:FireServer("SetRecipe", Workbench, WorkbenchID, itemName)
-    task.wait(0.25)
-
-    -- B2: Input nguyên liệu theo thứ tự
-    for slot, materialName in ipairs(recipe) do
-        local tool = findToolByName(materialName)
-        if tool then
-            local uuid = tool:GetAttribute("UUID")
-            if uuid then
-                tool.Parent = player.Character
-                task.wait(0.15)
-
-                CraftingRemote:FireServer("InputItem", Workbench, WorkbenchID, slot, {
-                    ItemType = "Seed Pack",
-                    ItemData = { UUID = uuid }
-                })
-
-                task.wait(0.2)
-            else
-                warn("Không tìm thấy UUID cho:", materialName)
-            end
-        else
-            warn("Không tìm thấy nguyên liệu:", materialName)
-        end
-    end
-
-    -- B3: Gửi Craft
-    CraftingRemote:FireServer("Craft", Workbench, WorkbenchID)
-    print("🛠️ Đã gửi lệnh craft:", itemName)
-end
-
--- 🔁 Vòng lặp tự động craft
-RunService.Heartbeat:Connect(function()
-    if autoCraftEnabled and selectedItem ~= "" then
-        local BenchTable = Workbench.SeedEventCraftingWorkBench.Model:FindFirstChild("BenchTable")
-        local TimerLabel = BenchTable and BenchTable:FindFirstChild("CraftingBillboardGui") and BenchTable.CraftingBillboardGui:FindFirstChild("Timer")
-
-        if TimerLabel and TimerLabel.Text and TimerLabel.Text ~= "" and TimerLabel.Text ~= "00:00" then
-            -- ⏳ Có thời gian, chờ đúng thời lượng
-            local mins, secs = string.match(TimerLabel.Text, "(%d+):(%d+)")
-            local duration = tonumber(mins) * 60 + tonumber(secs)
-            task.wait(duration + 0.5)
-        end
-
-        -- Claim trước nếu có
-        CraftingRemote:FireServer("Claim", Workbench, WorkbenchID, 1)
-        task.wait(0.2)
-
-        craftItem(selectedItem)
-    end
-end)
-
--- 🧷 Tự động lưu nếu PendingSave
-task.spawn(function()
-    while true do
-        task.wait(5)
-        if ConfigSystem.PendingSave then
-            ConfigSystem.SaveConfig()
-        end
-    end
-end)
 
 --end
 -- SEED SHOP 
