@@ -884,7 +884,6 @@ local backpack = player:WaitForChild("Backpack")
 local CraftingRemote = ReplicatedStorage.GameEvents:WaitForChild("CraftingGlobalObjectService")
 local Workbench = workspace.Interaction.UpdateItems.NewCrafting:WaitForChild("SeedEventCraftingWorkBench")
 local WorkbenchID = "SeedEventWorkbench"
-local TimerLabel = Workbench.SeedEventCraftingWorkBench.Model.BenchTable.CraftingBillboardGui:WaitForChild("Timer")
 
 -- 📁 ConfigSystem hỗ trợ lưu cấu hình auto craft
 local ConfigSystem = _G.ConfigSystem
@@ -997,9 +996,14 @@ end
 -- 🔁 Vòng lặp tự động craft
 RunService.Heartbeat:Connect(function()
     if autoCraftEnabled and selectedItem ~= "" then
-        local timerText = TimerLabel.Text
-        if timerText and timerText ~= "" and timerText ~= "00:00" then
-            return -- đang chạy, đợi tiếp
+        local BenchTable = Workbench.SeedEventCraftingWorkBench.Model:FindFirstChild("BenchTable")
+        local TimerLabel = BenchTable and BenchTable:FindFirstChild("CraftingBillboardGui") and BenchTable.CraftingBillboardGui:FindFirstChild("Timer")
+
+        if TimerLabel and TimerLabel.Text and TimerLabel.Text ~= "" and TimerLabel.Text ~= "00:00" then
+            -- ⏳ Có thời gian, chờ đúng thời lượng
+            local mins, secs = string.match(TimerLabel.Text, "(%d+):(%d+)")
+            local duration = tonumber(mins) * 60 + tonumber(secs)
+            task.wait(duration + 0.5)
         end
 
         -- Claim trước nếu có
@@ -1009,7 +1013,7 @@ RunService.Heartbeat:Connect(function()
         craftItem(selectedItem)
     end
 end)
-
+--end
 -- SEED SHOP 
 -- =========================
 -- 🌱  SEED  SHOP  SECTION
