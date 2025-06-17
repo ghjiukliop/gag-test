@@ -921,7 +921,7 @@ SeedCraftingSection:AddToggle("AutoCraftToggle", {
     print(val and ("🟢 Đã bật Auto Craft: " .. selectedItem) or "🔴 Đã tắt Auto Craft")
 end)
 
--- 🔎 Tìm tool trong backpack hoặc theo tên bắt đầu
+-- 🔎 Tìm tool trong backpack hoặc character theo tên bắt đầu
 local function findToolByName(name)
     for _, tool in ipairs(backpack:GetChildren()) do
         if tool:IsA("Tool") and (tool.Name == name or tool.Name:match("^" .. name)) then
@@ -965,19 +965,19 @@ local function craftItem(itemName)
     for slot, materialName in ipairs(recipe) do
         local tool = findToolByName(materialName)
         if tool then
-            local uuid = tool:GetAttribute("UUID")
-            if uuid then
-                tool.Parent = player.Character
+            local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid:EquipTool(tool)
                 task.wait(0.15)
 
                 CraftingRemote:FireServer("InputItem", Workbench, WorkbenchID, slot, {
                     ItemType = "Seed Pack",
-                    ItemData = { UUID = uuid }
+                    ItemData = {} -- Không cần UUID nữa
                 })
 
                 task.wait(0.2)
             else
-                warn("Không tìm thấy UUID cho:", materialName)
+                warn("⚠ Không tìm thấy Humanoid để trang bị tool: ", materialName)
             end
         else
             warn("❌ Thiếu nguyên liệu:", materialName)
@@ -1007,6 +1007,7 @@ RunService.Heartbeat:Connect(function()
         craftItem(selectedItem)
     end
 end)
+
 
 
 --end
