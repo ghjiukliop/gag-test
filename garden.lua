@@ -876,7 +876,6 @@ end)
 
 -- Seed crafting event 
 -- 📦 Auto Craft System for SeedEventWorkbench
--- 📦 Auto Craft System for SeedEventWorkbench
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -922,19 +921,25 @@ SeedCraftingSection:AddToggle("AutoCraftToggle", {
     print(val and ("🟢 Đã bật Auto Craft: " .. selectedItem) or "🔴 Đã tắt Auto Craft")
 end)
 
--- 🔎 Tìm tool trong backpack hoặc character theo tên bắt đầu
-local function findToolByName(name)
+-- 🔎 Tìm tool trong backpack theo tên nguyên liệu
+local function findToolByMaterialName(materialName)
     for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and (tool.Name == name or tool.Name:match("^" .. name)) then
-            return tool
-        end
-    end
-    for _, tool in ipairs(player.Character:GetChildren()) do
-        if tool:IsA("Tool") and (tool.Name == name or tool.Name:match("^" .. name)) then
+        if tool:IsA("Tool") and tool.Name:match("^" .. materialName) then
             return tool
         end
     end
     return nil
+end
+
+-- 🔄 Chờ đến khi người chơi không còn cầm tool đó nữa
+local function waitUntilToolReleased(expectedName)
+    while true do
+        local held = player.Character and player.Character:FindFirstChildOfClass("Tool")
+        if not held or not held.Name:match("^" .. expectedName) then
+            break
+        end
+        task.wait(0.1)
+    end
 end
 
 -- 🧠 Thực hiện craft item
@@ -956,38 +961,44 @@ local function craftItem(itemName)
         return
     end
 
-    print("📦 Kiểm tra nguyên liệu cho:", itemName)
+    print("📦 Bắt đầu craft:", itemName)
 
     -- B1: SetRecipe
     CraftingRemote:FireServer("SetRecipe", Workbench, WorkbenchID, itemName)
     task.wait(0.25)
 
-    -- B2: Input nguyên liệu theo thứ tự
+    -- B2: Gửi từng nguyên liệu
     for slot, materialName in ipairs(recipe) do
-        local tool = findToolByName(materialName)
-        if tool then
-            local uuid = tool:GetAttribute("UUID")
+        while true do
+            local tool = findToolByMaterialName(materialName)
+            if not tool then
+                warn("❌ Không tìm thấy nguyên liệu:", materialName)
+                break
+            end
+
+            local uuid = tool:GetAttribute("c")
             local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid and uuid then
+
+            if uuid and humanoid then
                 humanoid:EquipTool(tool)
                 task.wait(0.15)
 
                 CraftingRemote:FireServer("InputItem", Workbench, WorkbenchID, slot, {
                     ItemType = "Seed Pack",
-                    ItemData = {
-                        UUID = uuid
-                    }
+                    ItemData = { UUID = uuid }
                 })
                 task.wait(0.2)
+
+                waitUntilToolReleased(materialName)
+                break
             else
-                warn("⚠ Không thể input tool vì thiếu UUID hoặc humanoid:", materialName)
+                warn("⚠ Không thể gửi nguyên liệu:", materialName)
+                break
             end
-        else
-            warn("❌ Thiếu nguyên liệu:", materialName)
         end
     end
 
-    -- B3: Gửi Craft
+    -- B3: Gửi lệnh Craft
     CraftingRemote:FireServer("Craft", Workbench, WorkbenchID)
     print("🛠️ Đã gửi lệnh craft:", itemName)
 end
