@@ -875,7 +875,6 @@ task.spawn(function()
 end)
 
 -- Seed crafting event 
-
 -- 📦 Auto Craft System for SeedEventWorkbench
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -912,7 +911,7 @@ end)
 
 -- 🔘 Toggle bật/tắt Auto Craft
 SeedCraftingSection:AddToggle("AutoCraftToggle", {
-    Title = "Tự động craft item",
+    Title = "1Tự động craft item",
     Default = autoCraftEnabled,
     Tooltip = "Sẽ đợi hết thời gian, sau đó craft lại liên tục",
 }):OnChanged(function(val)
