@@ -876,6 +876,7 @@ end)
 
 -- Seed crafting event 
 -- 📦 Auto Craft System for SeedEventWorkbench
+-- 📦 Auto Craft System for SeedEventWorkbench
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -965,19 +966,21 @@ local function craftItem(itemName)
     for slot, materialName in ipairs(recipe) do
         local tool = findToolByName(materialName)
         if tool then
+            local uuid = tool:GetAttribute("UUID")
             local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-            if humanoid then
+            if humanoid and uuid then
                 humanoid:EquipTool(tool)
                 task.wait(0.15)
 
                 CraftingRemote:FireServer("InputItem", Workbench, WorkbenchID, slot, {
                     ItemType = "Seed Pack",
-                    ItemData = {} -- Không cần UUID nữa
+                    ItemData = {
+                        UUID = uuid
+                    }
                 })
-
                 task.wait(0.2)
             else
-                warn("⚠ Không tìm thấy Humanoid để trang bị tool: ", materialName)
+                warn("⚠ Không thể input tool vì thiếu UUID hoặc humanoid:", materialName)
             end
         else
             warn("❌ Thiếu nguyên liệu:", materialName)
@@ -1007,8 +1010,6 @@ RunService.Heartbeat:Connect(function()
         craftItem(selectedItem)
     end
 end)
-
-
 
 --end
 -- SEED SHOP 
