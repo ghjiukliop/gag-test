@@ -875,6 +875,7 @@ task.spawn(function()
 end)
 
 -- Seed crafting event 
+
 -- 📦 Auto Craft System for SeedEventWorkbench
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -921,10 +922,10 @@ SeedCraftingSection:AddToggle("AutoCraftToggle", {
     print(val and ("🟢 Đã bật Auto Craft: " .. selectedItem) or "🔴 Đã tắt Auto Craft")
 end)
 
--- 🔎 Tìm tool trong backpack theo tên nguyên liệu
+-- 🔎 Tìm tool trong backpack theo tên nguyên liệu (không dùng biểu thức chính quy)
 local function findToolByMaterialName(materialName)
     for _, tool in ipairs(backpack:GetChildren()) do
-        if tool:IsA("Tool") and tool.Name:match("^" .. materialName) then
+        if tool:IsA("Tool") and tool.Name:sub(1, #materialName) == materialName then
             return tool
         end
     end
@@ -935,7 +936,7 @@ end
 local function waitUntilToolReleased(expectedName)
     while true do
         local held = player.Character and player.Character:FindFirstChildOfClass("Tool")
-        if not held or not held.Name:match("^" .. expectedName) then
+        if not held or not held.Name:sub(1, #expectedName) == expectedName then
             break
         end
         task.wait(0.1)
