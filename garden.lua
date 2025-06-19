@@ -1196,7 +1196,6 @@ end)
 -- SHOP SECTION: Mua Pet Egg
 
 -- Tạo section "Egg Shop"
-
 local EggShopSection = ShopTab:AddSection("Egg Shop")
 
 local eggEvent = game:GetService("ReplicatedStorage").GameEvents.BuyPetEgg
@@ -1208,12 +1207,29 @@ local ALL_EGGS = {
 local selectedEggs = ConfigSystem.CurrentConfig.EggSelectedList or {}
 local autoBuyEnabled = ConfigSystem.CurrentConfig.EggAutoBuyEnabled or false
 
+-- Tạo một bản sao danh sách ban đầu
+local filteredEggList = table.clone(ALL_EGGS)
+
+-- Ô tìm kiếm phía trên dropdown
+EggShopSection:AddInput("EggSearchInput", {
+    Title = "🔍 Tìm kiếm Egg",
+    Placeholder = "Nhập tên Egg để lọc...",
+    Default = "",
+}):OnChanged(function(inputText)
+    filteredEggList = {}
+    for _, egg in ipairs(ALL_EGGS) do
+        if egg:lower():find(inputText:lower()) then
+            table.insert(filteredEggList, egg)
+        end
+    end
+    eggDropdown:SetValues(filteredEggList)
+end)
+
 -- Dropdown chọn egg để mua
 local eggDropdown = EggShopSection:AddDropdown("EggSelector", {
     Title = "Chọn loại Egg để Auto Mua",
-    Values = ALL_EGGS,
+    Values = filteredEggList,
     Multi = true,
-    DropdownHeight = nil,  -- nếu thư viện coi nil là "không giới hạn"
     Default = (function()
         local dict = {}
         for _, v in ipairs(selectedEggs) do dict[v] = true end
