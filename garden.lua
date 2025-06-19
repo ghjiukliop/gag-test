@@ -1194,8 +1194,6 @@ task.spawn(function()
 end)
 
 -- SHOP SECTION: Mua Pet Egg
-
--- Tạo section "Egg Shop"
 local EggShopSection = ShopTab:AddSection("Egg Shop")
 
 local eggEvent = game:GetService("ReplicatedStorage").GameEvents.BuyPetEgg
@@ -1207,26 +1205,31 @@ local ALL_EGGS = {
 local selectedEggs = ConfigSystem.CurrentConfig.EggSelectedList or {}
 local autoBuyEnabled = ConfigSystem.CurrentConfig.EggAutoBuyEnabled or false
 
--- Tạo một bản sao danh sách ban đầu
+local eggDropdown -- Khai báo trước để có thể tham chiếu trong hàm tìm kiếm
+
+-- Tạo bản sao danh sách ban đầu
 local filteredEggList = table.clone(ALL_EGGS)
 
--- Ô tìm kiếm phía trên dropdown
+-- 🔍 Ô tìm kiếm để lọc Egg
 EggShopSection:AddInput("EggSearchInput", {
     Title = "🔍 Tìm kiếm Egg",
-    Placeholder = "Nhập tên Egg để lọc...",
+    Placeholder = "Nhập tên Egg...",
     Default = "",
 }):OnChanged(function(inputText)
+    if not eggDropdown then return end
+
     filteredEggList = {}
     for _, egg in ipairs(ALL_EGGS) do
         if egg:lower():find(inputText:lower()) then
             table.insert(filteredEggList, egg)
         end
     end
+
     eggDropdown:SetValues(filteredEggList)
 end)
 
--- Dropdown chọn egg để mua
-local eggDropdown = EggShopSection:AddDropdown("EggSelector", {
+-- 🧾 Dropdown chọn Egg để Auto Mua
+eggDropdown = EggShopSection:AddDropdown("EggSelector", {
     Title = "Chọn loại Egg để Auto Mua",
     Values = filteredEggList,
     Multi = true,
@@ -1245,6 +1248,7 @@ eggDropdown:OnChanged(function(dictValues)
     ConfigSystem.CurrentConfig.EggSelectedList = selectedEggs
     ConfigSystem.SaveConfig()
 end)
+
 
 -- Toggle bật auto buy egg
 local eggToggle = EggShopSection:AddToggle("AutoBuyEggToggle", {
