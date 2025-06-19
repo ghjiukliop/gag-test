@@ -1042,11 +1042,26 @@ local seedList = {
 -- 3️⃣  Biến lưu & load từ ConfigSystem
 local selectedSeeds      = ConfigSystem.CurrentConfig.SeedSelectedList      or {}
 local autoBuySeedEnabled = ConfigSystem.CurrentConfig.SeedAutoBuyEnabled    or false
+-- 🔍 Tìm kiếm Seed
+local filteredSeedList = table.clone(seedList)
+SeedShopSection:AddInput("SeedSearchInput", {
+    Title = "🔍 Tìm kiếm Seed",
+    Placeholder = "Nhập tên Seed...",
+    Default = "",
+}):OnChanged(function(text)
+    filteredSeedList = {}
+    for _, seed in ipairs(seedList) do
+        if seed:lower():find(text:lower()) then
+            table.insert(filteredSeedList, seed)
+        end
+    end
+    seedDropdown:SetValues(filteredSeedList)
+end)
 
 -- 4️⃣  Dropdown chọn seed
-local seedDropdown = SeedShopSection:AddDropdown("SeedSelector", {
+seedDropdown = SeedShopSection:AddDropdown("SeedSelector", {
     Title   = "🛒 Chọn seed để auto mua",
-    Values  = seedList,
+    Values  = filteredSeedList,
     Multi   = true,
     Default = (function()
         local dict = {}
@@ -1054,6 +1069,7 @@ local seedDropdown = SeedShopSection:AddDropdown("SeedSelector", {
         return dict
     end)()
 })
+
 
 seedDropdown:OnChanged(function(dict)
     selectedSeeds = {}
@@ -1123,15 +1139,32 @@ local gearList = {
     "Recall Wrench",
     "Watering Can"
 }
-
--- 📦 Biến lưu item được chọn
 local selectedGears = ConfigSystem.CurrentConfig.GearSelectedList or {}
 local autoBuyGearEnabled = ConfigSystem.CurrentConfig.GearAutoBuyEnabled or false
+local filteredGearList = table.clone(gearList)
+local gearDropdown
 
--- 🔽 Dropdown chọn gear
-local gearDropdown = GearShopSection:AddDropdown("GearSelector", {
+-- 🔍 Tìm kiếm Gear
+GearShopSection:AddInput("GearSearchInput", {
+    Title = "🔍 Tìm kiếm Gear",
+    Placeholder = "Nhập tên Gear...",
+    Default = "",
+}):OnChanged(function(text)
+    if not gearDropdown then return end
+
+    filteredGearList = {}
+    for _, gear in ipairs(gearList) do
+        if gear:lower():find(text:lower()) then
+            table.insert(filteredGearList, gear)
+        end
+    end
+    gearDropdown:SetValues(filteredGearList)
+end)
+
+-- 🧾 Dropdown chọn Gear để Auto Mua
+gearDropdown = GearShopSection:AddDropdown("GearSelector", {
     Title = "🛒 Chọn gear để auto mua",
-    Values = gearList,
+    Values = filteredGearList,
     Multi = true,
     Default = (function()
         local dict = {}
@@ -1140,20 +1173,15 @@ local gearDropdown = GearShopSection:AddDropdown("GearSelector", {
     end)()
 })
 
-gearDropdown:OnChanged(function(dict)
+gearDropdown:OnChanged(function(dictValues)
     selectedGears = {}
-    for name, picked in pairs(dict) do
+    for name, picked in pairs(dictValues) do
         if picked then table.insert(selectedGears, name) end
     end
     ConfigSystem.CurrentConfig.GearSelectedList = selectedGears
     ConfigSystem.SaveConfig()
-
-    if #selectedGears == 0 then
-        print("🔴 Chưa chọn gear nào.")
-    else
-        print("✅ Gear đã chọn:", table.concat(selectedGears, ", "))
-    end
 end)
+
 
 -- 🔘 Toggle bật auto mua gear
 GearShopSection:AddToggle("AutoBuyGearToggle", {
