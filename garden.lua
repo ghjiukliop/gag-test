@@ -1213,6 +1213,7 @@ local eggDropdown = EggShopSection:AddDropdown("EggSelector", {
     Title = "Chọn loại Egg để Auto Mua",
     Values = ALL_EGGS,
     Multi = true,
+    DropdownHeight = nil,  -- nếu thư viện coi nil là "không giới hạn"
     Default = (function()
         local dict = {}
         for _, v in ipairs(selectedEggs) do dict[v] = true end
